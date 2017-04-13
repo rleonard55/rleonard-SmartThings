@@ -17,8 +17,8 @@ definition(
     name: "Battery Manager",
     namespace: "rleonard55",
     author: "Rob Leonard",
-    description: "Monitors Battery",
-    category: "",
+    description: "Monitors battery levels and allows you to record the battery types, count & warning % for each device. Optionally warns you with that info if it gets to low",
+    category: "My Apps",
     iconUrl: "http://cdn.device-icons.smartthings.com/Office/office6-icn.png",
     iconX2Url: "http://cdn.device-icons.smartthings.com/Office/office6-icn@2x.png",
     iconX3Url: "http://cdn.device-icons.smartthings.com/Office/office6-icn@2x.png")
