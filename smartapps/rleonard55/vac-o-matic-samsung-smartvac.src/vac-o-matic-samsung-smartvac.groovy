@@ -43,7 +43,9 @@ def page2() {
 	dynamicPage(name: "page2", title: "Additional Settings", install: true, uninstall: true) {
         //NotificationSection()
         section() {
-			input "dustbinReminder", "bool", title: "Remind me to empty the vacuum's dustbin", defaultValue: true
+			input "dustbinReminder", "bool", title: "Remind me to empty the vacuum's dustbin", submitOnChange: true, defaultValue: true
+            if(dustbinReminder)
+            	input "remindOnce", "bool", title: "Only remind on first arrival"
             input "stopOnArrive", "bool", title: "Stop vacuum(s) on arrival", defaultValue: false
             input "waitMin", "number", title: "Minutes to wait after departure",range: "0..60", required: true, defaultValue: 15
         }
@@ -189,8 +191,6 @@ private subscribeIt() {
 	
     subscribe(presenceSensors, "presence.present", onPresenceArrive)
 	subscribe(presenceSensors, "presence.not present", onPresenceDepart)
-   //subscribe(myVacuums, "switch.on", onSwitchedOn)
-   // subscribe(myVacuums, "timedSession.start", onSwitchedOn)
 
 	//▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲  
 	logTrace "Exiting 'subscribeIt'"
@@ -227,7 +227,6 @@ def onPresenceArrive(evt) {
     
     logDebug("Vacuums: ${myVacuums}")
     //def result = myVacuums.any { v -> v.currentValue("operationState")=="cleaning" }
-    
     //myVacuums.each{log.debug it.currentValue("operationState")}
     
     if(stopOnArrive)// && result)
@@ -237,23 +236,34 @@ def onPresenceArrive(evt) {
     log.debug "dustbinReminder: ${dustbinReminder}"
     log.debug "RanToday(): ${ranToday()}"
     
-   if(dustbinReminder && ranToday())
-		sendPush("Remember to empty the vacuum's dustbin!")
-	
+    
+
+	if(dustbinReminder && ranToday())
+        if(remindOnce) {
+            if(state.reminder== false) {
+                sendPush("Remember to empty the vacuum's dustbin!") 
+                state.reminder=true
+			}
+		} else {
+        	sendPush("Remember to empty the vacuum's dustbin!")
+            state.reminder=true
+        }
+
     subscribeIt()   
 	//▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲  
 	logTrace "Exiting 'onPresenceArrive'"
 }
-def onSwitchedOn(evt) {	
-	logTrace "Entering 'onSwitchedOn'"
+
+//def onSwitchedOn(evt) {	
+//	logTrace "Entering 'onSwitchedOn'"
 	//▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 
-    log.debug "Vacuum changed to 'On'"
-	state.LastRan = now()
+//    log.debug "Vacuum changed to 'On'"
+//	state.LastRan = now()
     
     //▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲  
-	logTrace "Exiting 'onSwitchedOn'"
-}
+//	logTrace "Exiting 'onSwitchedOn'"
+//}
 
 def preCheck() {
 	
@@ -299,6 +309,7 @@ def doSomething() {
         
         // Would like to find event to subscrive to set on "Start"...
         state.LastRan = now()
+        state.reminder=false
         
 		logDebug("starting")
 	}
