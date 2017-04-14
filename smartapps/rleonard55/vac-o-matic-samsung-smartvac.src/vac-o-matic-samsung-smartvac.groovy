@@ -43,6 +43,7 @@ def page2() {
 	dynamicPage(name: "page2", title: "Additional Settings", install: true, uninstall: true) {
         //NotificationSection()
         section() {
+        	input "enabled", "bool", title: "Enable Vac-O-Matic", defaultValue: true
 			input "dustbinReminder", "bool", title: "Remind me to empty the vacuum's dustbin", submitOnChange: true, defaultValue: true
             if(dustbinReminder)
             	input "remindOnce", "bool", title: "Only remind on first arrival"
@@ -268,6 +269,12 @@ def onPresenceArrive(evt) {
 def preCheck() {
 	
     logDebug("Starting Prechecks")
+    if(!enabled()) {
+    	logDebug "Disabled, skipping"
+        return false
+    }
+    logDebug "EnabledOk = True"
+    
 	if(anyonePresent()) {
     	logDebug("Others are still present, skipping")
         return false
@@ -322,6 +329,9 @@ def doSomething() {
 	logTrace "Exiting 'doSomething'"
 }
 
+private enabled(){
+	return settings.enabled
+}
 private timeToRun() {
 	logTrace "Entering 'timeToRun'"
 	//▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
