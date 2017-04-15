@@ -7,16 +7,14 @@ metadata {
         namespace: "rleonard55",
         author: "Rob Leonard",	
         description: "Start/stop/arm/disarm/panic vehicle",
-        iconUrl:"http://dl.myket.ir/imageresizing/icon/small/com.directed.android.viper.png",
-        iconX2Url:"http://www.fgcaraudio.com/viper_smart_start.png",
         singleInstance: false)
         {
 		capability "timedSession"
 		capability "lock"
 		
         command "panic"
-        
-        attribute "LastError", "string"
+        command "trunk"
+        command "test"
         }
 	
 	preferences {
@@ -28,7 +26,7 @@ metadata {
 	simulator { }
 
 	tiles (scale: 2) {
-        multiAttributeTile(name: "info", type:"generic", width:6, height:4, canChangeIcon: true, decoration:"flat") {
+        multiAttributeTile(name: "info", type:"generic", width:6, height:4) {
             tileAttribute("device.info", key: "PRIMARY_CONTROL") {
                 attributeState("default", label:'${currentValue}',backgroundColor:"#000000")
             }
@@ -48,10 +46,15 @@ metadata {
             state "active", label: 'Start', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#d5fdd5", action: "start", nextState:"inactive"
             state "inactive", label: 'Sending',icon: "st.samsung.da.RC_ic_power", backgroundColor: "#d3d3d3", nextState:"active"
         }
+        standardTile("trunk", "trunk", width:3, height:2){
+            state "active", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#ffffff", action: "lock", nextState:"inactive"
+            state "inactive", label: 'Sending',icon: "st.bmw.trunk_open", backgroundColor: "#d3d3d3", nextState:"active"
+        }
         standardTile("panic", "panic", width:3, height: 2){
             state "active", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#ff9999", action: "panic", nextState:"inactive"
             state "inactive", label: 'Sending',icon: "st.Office.office6", backgroundColor: "#d3d3d3", nextState:"active"
         }
+
 		main (["lock"])
 	}
 }
@@ -71,6 +74,7 @@ def lock() {
 
     sendEvent(name:"lock", value:"active",displayed:true, isStateChange: true)
 }
+
 def unlock() {
 	log.info "Received Unlocking Request"
 	send("disarm")
@@ -83,7 +87,6 @@ def start() {
     
     sendEvent(name:"start",value:"active",displayed:true, isStateChange: true)
 }
-
 def stop() {
 	log.info "Received Stoping Request"
 	send("remote")
@@ -95,6 +98,19 @@ def panic(){
 	send("panic")
     
     sendEvent(name:"panic",value:"active",displayed:true, isStateChange: true)
+}
+def trunk(){
+	log.info "Received Trunk Open Request"
+	send("trunk")
+    
+    sendEvent(name:"trunk",value:"active",displayed:true, isStateChange: true)
+}
+
+def test(verb="READ_CURRENT"){
+	//locate
+    //READ_ACTIVE
+    //READ_CURRENT
+	send(verb)
 }
 
 private login() {
