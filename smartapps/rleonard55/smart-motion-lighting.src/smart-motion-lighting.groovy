@@ -52,7 +52,9 @@ def page2() {
         DayOfWeekSection()
         //MonthSection()
         //OncePerDaySection()
-        
+        section(""){
+        	input "enabled", "bool", title:"Enabled", defaultValue:true
+        }
         NameModeSection()
         LoggingSection()
         //NotificationSection()
@@ -132,6 +134,12 @@ def initialize() {
 }
 
 def onMotion(evt) {
+	
+    if(!enabled) {
+    	logDebug "Disabled, skipping"
+        return
+    }
+    	
     unschedule(turnOffRestore)
     switches.each {
     	state.(it.id) = null
@@ -156,12 +164,14 @@ def onMotion(evt) {
                 else {
                 	 logDebug "Setting ${it.displayName} to ${settings.level}%"
                 	 it.setLevel(settings.level)
+                    // it.on()
                 }
         	} else if(it.hasCommand('setLevel') && settings.level > it.currentValue("level")) {
 				state.(it.id) = it.currentValue("level")
                 logDebug "${it.displayName} is at ${state.(it.id)}%"
             	logDebug "Raising ${it.displayName} to ${settings.level}%"
                 it.setLevel(settings.level)
+                //it.on()
         	}
         }
         else
@@ -219,10 +229,11 @@ def onTurnOff(evt){
 def onLevelChange(evt){
 	logDebug "Manual level change detected, killing scheduled actions"
 	unsubscribe(onMotionStop)
-    nsubscribe(onTurnOff)
-    nsubscribe(onLevelChange)
+    unsubscribe(onTurnOff)
+    unsubscribe(onLevelChange)
     unschedule()
 }
+
 private timeToRun() {
 	logTrace "Entering 'timeToRun'"
 	//▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
