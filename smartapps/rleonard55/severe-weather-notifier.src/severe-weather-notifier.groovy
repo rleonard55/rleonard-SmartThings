@@ -41,7 +41,7 @@ def settingsPage() {
             input "notifications", "capability.notification", title: "Notify Sources", multiple: true, required: false, hideWhenEmpty:true
             input "Tts","capability.speechSynthesis", title: "Text to speech devices", multiple: true, required: false, hideWhenEmpty:true
             input "Tones","capability.tone", title: "Tone generators", multiple: true, required: false, hideWhenEmpty:true
-            input "joinNotifiers", "device.JoinNotifier", title: "Join Notifiers", multiple:true, required:false, hideWhenEmpty:true
+            //input "joinNotifiers", "device.JoinNotifier", title: "Join Notifiers", multiple:true, required:false, hideWhenEmpty:true
             //input "alarms", "capability.alarm", title:"Alarms", multiple:true, required:false, hideWhenEmpty:true
             //input "silent", "enum", options: ["Yes","No"], title: "Silent alarm only (Yes/No), i.e. strobe", hideWhenEmpty:true
             //input "clear", "number", title:"Active (seconds)", defaultValue:0, hideWhenEmpty:true
@@ -78,20 +78,18 @@ def settingsPage() {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-   // def gg=  weatherMap()
-   // gg.each{itm-> log.debug "(${itm.type}) ${itm.value}"}
 
 	initialize()
 }
 def updated() {
 	log.debug "Updated with settings: ${settings}"
-    state.alertKeys = null
 	
     unsubscribe()
     unschedule()
 	initialize()
     
- //   checkForSevereWeather()
+    // state.alertKeys = null
+    // checkForSevereWeather()
 }
 def initialize() {
 	//def sec = Math.round(Math.floor(Math.random() * 60))
@@ -157,6 +155,7 @@ private weatherMap() {
 }
 
 private checkForSevereWeather() {
+	log.info "Entered 'checkForSevereWeather'"
 	def alerts
 	if(locationIsDefined()) {
 		if(zipcodeIsValid()) {
@@ -180,7 +179,8 @@ private checkForSevereWeather() {
 		state.alertKeys = newKeys
 
 		alerts.each {alert ->
-            def msg = "Weather Alert! ${alert.description} from ${alert.date} until ${alert.expires}"
+            //def msg = "Weather Alert! ${alert.description} from ${alert.date} until ${alert.expires}"
+            def msg = "Weather Alert! ${alert.description} until ${alert.expires}"
             if (!oldKeys.contains(alert.type + alert.date_epoch) && SelectedWeatherItems().contains(alert.type))
 				send(msg)
 		}
@@ -246,11 +246,6 @@ private send(message) {
             
     settings.Tts.each{
         	it?.speak(message) }
-
-	settings.joinNotifiers.each{
-    	it?.push3(message, "Severe Weather Alert!", "https://s3.amazonaws.com/smartapp-icons/SafetyAndSecurity/App-SevereWeather@2x.png")}
-    	//if (it!=null)
-        //	it.push3(message, "Severe Weather Alert!", "https://s3.amazonaws.com/smartapp-icons/SafetyAndSecurity/App-SevereWeather@2x.png")}
 
 // Need to workout how this ends
 //    settings.alarms.each{
