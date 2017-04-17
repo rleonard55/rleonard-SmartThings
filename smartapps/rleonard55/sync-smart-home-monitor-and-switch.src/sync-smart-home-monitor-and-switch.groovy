@@ -18,7 +18,6 @@ definition(
     namespace: "rleonard55",
     author: "Rob Leonard",
     description: "Links the status of the Smart Home Monitor to a switch.",
-    category: "",
     iconUrl: "https://cdn4.iconfinder.com/data/icons/materia-security-vol-3/24/022_110_crypto_switch_commutator_security_lock_arrows-256.png",
     iconX2Url: "https://cdn4.iconfinder.com/data/icons/materia-security-vol-3/24/022_110_crypto_switch_commutator_security_lock_arrows-256.png",
     iconX3Url: "https://cdn4.iconfinder.com/data/icons/materia-security-vol-3/24/022_110_crypto_switch_commutator_security_lock_arrows-256.png")
@@ -53,7 +52,6 @@ def SettingsPage(){
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-
 	initialize()
 }
 def updated() {
