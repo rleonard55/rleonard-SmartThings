@@ -1,5 +1,5 @@
 /**
- *  SHM To Button Linker
+ *  Sync Smart Home Monitor and Switch
  *
  *  Copyright 2017 Rob Leonard
  *
