@@ -49,23 +49,23 @@ metadata {
 	tiles {
     	standardTile("speakTile", "device.speech", inactiveLabel: true, canChangeIcon: true) {
             state "inactive", label:'Speak', action:"Speech Synthesis.speak", icon:"st.Electronics.electronics16", nextState:"active"
-            state "active", label:'Sending', icon:"st.Electronics.electronics16", backgroundColor: "#59ab46"
+            state "active", label:'Sending', icon:"st.Electronics.electronics16", backgroundColor: "#59ab46", nextState:"inactive"
         }
         standardTile("name", "device.name", inactiveLabel: false, decoration: "flat") {
         	state "inactive", label: "Tasker", action: "test", icon:"st.Seasonal Winter.seasonal-winter-014", nextState:"active" //, backgroundColor: "#59ab46"
-			state "active", label: "Sending", icon:"st.Seasonal Winter.seasonal-winter-014", backgroundColor: "#59ab46"
+			state "active", label: "Sending", icon:"st.Seasonal Winter.seasonal-winter-014", backgroundColor: "#59ab46", nextState:"inactive"
        }
         standardTile("toast", "device.notification", inactiveLabel: false, decoration: "flat") {
             state "inactive", label: "Notify", action: "test2",icon: "st.Office.office19", nextState:"active"
-            state "active", label: "Sending",icon: "st.Office.office19",backgroundColor: "#59ab46"
+            state "active", label: "Sending",icon: "st.Office.office19",backgroundColor: "#59ab46", nextState:"inactive"
         }
         standardTile("beep", "device.tone", inactiveLabel: false, decoration: "flat") {
             state "inactive", label:'Tone', action:"tone.beep", icon:"st.Entertainment.entertainment2", nextState:"active"
-            state "active", label: "Sending",icon:"st.Entertainment.entertainment2", backgroundColor: "#59ab46"
+            state "active", label: "Sending",icon:"st.Entertainment.entertainment2", backgroundColor: "#59ab46", nextState:"inactive"
         }
 		standardTile("doorbell", "tone2", inactiveLabel: false, decoration: "flat") {
             state "inactive", label:'Doorbell', action:"doorbell", icon:"st.Electronics.electronics13", nextState:"active"
-            state "active", label: "Sending",icon:"st.Electronics.electronics13", backgroundColor: "#59ab46"
+            state "active", label: "Sending",icon:"st.Electronics.electronics13", backgroundColor: "#59ab46", nextState:"inactive"
         }
         main "speakTile"
 	}
@@ -237,7 +237,7 @@ private test() {
 	log.debug "Executing 'test'"
     push1("Hello $location")
     
-	sendEvent(name: "name", value: "inactive",displayed: false,isStateChange: true)
+	sendEvent(name: "name", value: "inactive", displayed: false, isStateChange: true)
 }
 private test2() {
 	log.debug "Executing 'test2'"
