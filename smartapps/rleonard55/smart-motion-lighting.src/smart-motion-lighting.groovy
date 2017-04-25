@@ -36,13 +36,14 @@ def page1() {
             if(switches.any{it.hasCommand('setLevel')}) {
             	input "level", "number",title: "Set to this level", range: "1..100", defaultValue: 30
             }
-            input "ifOffOrLower", "bool", title: "Only if off or lower", defaultValue:true
+            input "ifOffOrLower", "bool", title: "Only if switch is off or lower", defaultValue:true
             input "motions", "capability.motionSensor", title: "When there is motion here...", multiple:true
             
             input "turnOffAfterMotion", "bool", title: "Turn off / restore level when motion ends", defaultValue: false,submitOnChange: true
             if(turnOffAfterMotion) {
             	input "turnOffMin", "number", title: "After x minute(s)", range: "0..*", defaultValue: 15
             }
+            //input "slowTurnOff", "bool", title: "slowly turn down / off", defaultValue: false
         }
     }
 }
@@ -164,14 +165,14 @@ def onMotion(evt) {
                 else {
                 	 logDebug "Setting ${it.displayName} to ${settings.level}%"
                 	 it.setLevel(settings.level)
-                    // it.on()
+                     it.on()
                 }
         	} else if(it.hasCommand('setLevel') && settings.level > it.currentValue("level")) {
 				state.(it.id) = it.currentValue("level")
                 logDebug "${it.displayName} is at ${state.(it.id)}%"
             	logDebug "Raising ${it.displayName} to ${settings.level}%"
                 it.setLevel(settings.level)
-                //it.on()
+                it.on()
         	}
         }
         else
@@ -208,15 +209,23 @@ def onMotionStop(evt){
 def turnOffRestore(){
 	logDebug "Turning off/restoring switches"
     switches.each{
-    	if (state.(it.id)>0) {
+    	if (state?.(it.id)!= null && state?.(it.id)>0) {
         	logDebug "Restoreing ${it.displayName} to ${state.(it.id)}%"
 			it.setLevel(state.(it.id))
         }
-		else switches.off()
+		else it.off()
     }
     
     unsubscribe(onTurnOff)
     unsubscribe(onLevelChange)
+}
+
+def scheduleSlowTurnDown(){
+	logDebug "Scheduleing Slow Turn Down"
+    
+}
+def slowTurnDownStep(){
+	
 }
 
 def onTurnOff(evt){
