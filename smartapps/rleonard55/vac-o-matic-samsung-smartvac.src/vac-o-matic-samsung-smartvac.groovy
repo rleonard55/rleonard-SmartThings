@@ -98,7 +98,7 @@ def NameModeSection() {
     }
 }
 def LoggingSection() {
-	section("Logging",hideWhenEmpty:true) {
+	section("Logging", hideable:true, hidden:true) {
              input "debugOutput", "bool", title: "Enable debug logging?", defaultValue: DebugOutputSetting, displayDuringSetup: true, required: false
              input "traceOutput", "bool", title: "Enable trace logging?", defaultValue: TraeOutputSetting, displayDuringSetup: true, required: false
         }
@@ -167,7 +167,7 @@ def updated() {
 	logTrace "Entering 'updated'"
 	logDebug "Updated with settings: ${settings}"
 	//▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-	
+    
     unschedule()
 	unsubscribeIt()
     
