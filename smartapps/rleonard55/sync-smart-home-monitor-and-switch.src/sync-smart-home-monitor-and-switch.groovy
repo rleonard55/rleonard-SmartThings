@@ -31,7 +31,7 @@ def SettingsPage(){
         section("Sync this switch with the Smart Home Monitor") {
             input("MySwitch", "capability.switch", title: "Switches to Sync", multiple: false, required: true)
         }
-        section("Use presence sensor(s) to determin arm mode"){
+        section("Use presence sensor(s) to determin arm mode", hideWhenEmpty: true){
             input ("presenceSensors", "capability.presenceSensor", title: "Presence Sensor(s)", multiple: true, required: false,submitOnChange: true)
         }
         section("No presence sensors -> Set default arm mode.", hideWhenEmpty: true){
