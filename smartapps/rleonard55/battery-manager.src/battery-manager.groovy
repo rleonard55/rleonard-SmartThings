@@ -87,7 +87,7 @@ def nameModeSection() {
 def notificationSection(prompt= "Send Notifications?"){
     section(prompt) {
     	input name: "pushMessage", title: "Send ST's push notifications?", type: "bool", defaultValue: true
-        input("recipients", "contact", title: "Send additional notifications to") {
+        input("recipients", "contact", title: "Send additional notifications to", required: false) {
             input "phone", "phone", title: "Warn with text message (optional)", description: "Phone Number", required: false
         }
     }
