@@ -11,7 +11,8 @@ metadata {
         {
 		capability "timedSession"
 		capability "lock"
-		
+		capability "switch"
+        
         command "panic"
         command "trunk"
         command "test"
@@ -74,13 +75,20 @@ def lock() {
 
     sendEvent(name:"lock", value:"active",displayed:true, isStateChange: true)
 }
-
 def unlock() {
 	log.info "Received Unlocking Request"
 	send("disarm")
     
     sendEvent(name:"unlock", value:"active",displayed:true, isStateChange: true)
 }
+
+def on() {
+	start()
+}
+def off() {
+	stop()
+}
+
 def start() {
 	log.info "Received Starting Request"
 	send("remote")
@@ -99,6 +107,8 @@ def panic(){
     
     sendEvent(name:"panic",value:"active",displayed:true, isStateChange: true)
 }
+
+
 def trunk(){
 	log.info "Received Trunk Open Request"
 	send("trunk")
