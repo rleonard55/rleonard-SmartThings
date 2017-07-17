@@ -65,7 +65,7 @@ def settingsPage() {
         	}
 		}
         section ("Also, Text alerts to...") {
-            input("recipients", "contact", title: "Send notifications to") {
+            input("recipients", "contact", title: "Send notifications to",required: false) {
                 input "phone1", "phone", title: "Phone Number 1", required: false
                 input "phone2", "phone", title: "Phone Number 2", required: false
                 input "phone3", "phone", title: "Phone Number 3", required: false
