@@ -165,14 +165,14 @@ def onMotion(evt) {
                 else {
                 	 logDebug "Setting ${it.displayName} to ${settings.level}%"
                 	 it.setLevel(settings.level)
-                     it.on()
+                     //it.on()
                 }
         	} else if(it.hasCommand('setLevel') && settings.level > it.currentValue("level")) {
 				state.(it.id) = it.currentValue("level")
                 logDebug "${it.displayName} is at ${state.(it.id)}%"
             	logDebug "Raising ${it.displayName} to ${settings.level}%"
                 it.setLevel(settings.level)
-                it.on()
+                //it.on()
         	}
         }
         else
