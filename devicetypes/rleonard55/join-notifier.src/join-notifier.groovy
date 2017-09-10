@@ -32,6 +32,7 @@ metadata {
         capability "Tone"
         capability "Notification"
         capability "Speech Synthesis"
+        capability "audioNotification"
 	}
 
 	simulator {
@@ -106,6 +107,25 @@ def speak(String text) {
     
 
 	sendEvent(name: "speech", value: "inactive",displayed: false,isStateChange: true)
+}
+
+def playText(String message, Number level){
+	speak(message)
+}
+def playTextAndResume(String message, Number level){
+	speak(message)
+}
+def playTextAndRestore(String message, Number level){
+	speak(message)
+}
+def playTrack(String address, Number level){
+	playSound(address)
+}
+def playTrackAndResume(String address, Number level){
+	playSound(address)
+}
+def playTrackAndRestore(String uri, Number level){
+	playSound(address)
 }
 
 def deviceNotification() {
