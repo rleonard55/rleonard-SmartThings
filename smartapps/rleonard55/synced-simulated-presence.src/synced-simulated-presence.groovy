@@ -26,7 +26,7 @@ definition(
 
 preferences {
 		input("presenceSensors", "capability.presenceSensor", title: "Presence sensor(s) to sync with", multiple: true, required: false)
-        input("SimulatedPresenceSensor", "device.SimulatedPresenceSensor", title: "Slave (Simulated) Device", multiple: false, required: true)
+        input("SimulatedPresenceSensor", "device.SimulatedPresenceSensor", title: "Slave (Simulated) Device", multiple: true, required: true)
 }
 
 def installed() {
