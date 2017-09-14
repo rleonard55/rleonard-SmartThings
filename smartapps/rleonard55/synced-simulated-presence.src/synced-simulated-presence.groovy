@@ -26,7 +26,7 @@ definition(
 
 preferences {
 		input("presenceSensors", "capability.presenceSensor", title: "Presence sensor(s) to sync with", multiple: true, required: false)
-        input("SimulatedPresenceSensor", "device.SimulatedPresenceSensor", title: "Slave (Simulated) Device", multiple: true, required: true)
+        input("SimulatedPresenceSensor", "capability.presenceSensor", title: "Slave (Simulated) Device", multiple: false, required: true)
 }
 
 def installed() {
@@ -43,6 +43,7 @@ def updated() {
 }
 def initialize() {
 	log.debug "Initializing with settings: ${settings}"
+    
     runEvery10Minutes(OnPresenceDepart)
     subscribe(presenceSensors,"presence.present",OnPresenceArrive)
     subscribe(presenceSensors,"presence.not present",OnPresenceDepart)
@@ -52,13 +53,15 @@ def initialize() {
 
 def OnPresenceArrive(evt) {
 	log.debug "Running 'OnPresenceArrive'"
-	
+	log.debug "Value is : ${SimulatedPresenceSensor.currentValue("presence")}"
+    
     if(SimulatedPresenceSensor.currentValue("presence") != "present")
     	SimulatedPresenceSensor.arrived()
 }
 def OnPresenceDepart(evt) {
 	log.debug "Running 'OnPresenceDepart'"
-
+	log.debug "Value is : ${SimulatedPresenceSensor.currentValue("presence")}"
+    
     def result = presenceSensors.any {p -> 
     	p.currentValue("presence") == "present" }
 	
