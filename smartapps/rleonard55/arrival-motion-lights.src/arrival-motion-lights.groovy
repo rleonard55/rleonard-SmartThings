@@ -28,19 +28,19 @@ preferences {
 }
 def settings() {
     dynamicPage(name: "settings", title: "Turn switches off after some minutes", uninstall: true, install: true) {
-        section("When the following arrives..."){
+        section("When the following arrives ..."){
             input "myPresence", "capability.presenceSensor", title: "Presence Sensor?", multiple: true, required: true
         }
-        section("Quickly toggle this switch...") {
+        section("Quickly toggle this switch ...") {
             input "mySwitches", "capability.switch", title: "Switch?", multiple: true, required: true
         }
         section("Wait for ...") {
             input "myContact", "capability.contactSensor", title: "Contact Sensor?", required: false
         }
-        section("Timeout after...") {
+        section("Timeout after ...") {
             input "myTimeoutMinutes", "number", title: "Timeout Minutes?", defaultValue: 5, required: true
         }
-        section("Between These Times...") {
+        section("Between These Times ...") {
         	input "startingX", "enum", title: "Only between these times", options: ["A specific time", "Sunrise", "Sunset"], submitOnChange: true, required: false
             if(startingX == "A specific time") 
             	input "starting", "time", title: "Start time", required: true
@@ -73,7 +73,7 @@ def installed() {
 }
 def updated() {
 	log.debug "Updated with settings: ${settings}"
-	
+	state.LastForceTime = null
     unschedule()
 	unsubscribe()
 	initialize()
