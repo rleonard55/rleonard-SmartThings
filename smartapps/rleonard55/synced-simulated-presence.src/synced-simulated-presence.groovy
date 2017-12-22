@@ -27,46 +27,72 @@ definition(
 preferences {
 		input("presenceSensors", "capability.presenceSensor", title: "Presence sensor(s) to sync with", multiple: true, required: false)
         input("SimulatedPresenceSensor", "capability.presenceSensor", title: "Slave (Simulated) Device", multiple: false, required: true)
+        input("SyncMinutes", "number", title: "Min(s) to wait before syncing the presence settings",range: "5..120", defaultValue:15)
+        input("EnableDebug", "bool", title: "Enable debug messages", defaultValue: false)
 }
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
+	debugMsg("Installed with settings: ${settings}")
 
 	initialize()
 }
+
 def updated() {
-	log.debug "Updated with settings: ${settings}"
+	debugMsg("Updated with settings: ${settings}")
 
 	unsubscribe()
     unschedule()
 	initialize()
 }
+
 def initialize() {
-	log.debug "Initializing with settings: ${settings}"
+	debugMsg("Initializing with settings: ${settings}")
     
-    runEvery10Minutes(OnPresenceDepart)
     subscribe(presenceSensors,"presence.present",OnPresenceArrive)
     subscribe(presenceSensors,"presence.not present",OnPresenceDepart)
     
-    OnPresenceDepart(null)
+    subscribe(SimulatedPresenceSensor,"presence",SimulatedPresenceChange)
+    //subscribe(SimulatedPresenceSensor,"presence.present",SimulatedPresenceChange)
+    //subscribe(SimulatedPresenceSensor,"presence.not present",SimulatedPresenceChange)
+
+    PresenceSync()
+}
+
+def SimulatedPresenceChange(evt){
+	runIn(60*settings.SyncMinutes,PresenceSync)
 }
 
 def OnPresenceArrive(evt) {
-	log.debug "Running 'OnPresenceArrive'"
-	log.debug "Value is : ${SimulatedPresenceSensor.currentValue("presence")}"
+	debugMsg("Running 'OnPresenceArrive'")
+	debugMsg("Value is : ${SimulatedPresenceSensor.currentValue("presence")}")
     
-    if(SimulatedPresenceSensor.currentValue("presence") != "present")
-    	SimulatedPresenceSensor.arrived()
+    PresenceSync()
+    //runIn(60*settings.SyncMinutes,PresenceSync)
 }
+
 def OnPresenceDepart(evt) {
-	log.debug "Running 'OnPresenceDepart'"
-	log.debug "Value is : ${SimulatedPresenceSensor.currentValue("presence")}"
+	debugMsg("Running 'OnPresenceDepart'")
+	debugMsg("Value is : ${SimulatedPresenceSensor.currentValue("presence")}")
+    
+    PresenceSync()
+    //runIn(60*settings.SyncMinutes,PresenceSync)
+}
+
+def PresenceSync() {
+	debugMsg("Running 'PresenceSync'")
+    unschedule()
     
     def result = presenceSensors.any {p -> 
-    	p.currentValue("presence") == "present" }
-	
+        p.currentValue("presence") == "present" }
+    
     if(result && SimulatedPresenceSensor.currentValue("presence") != "present")
     	SimulatedPresenceSensor.arrived()
     else if(!result && SimulatedPresenceSensor.currentValue("presence") == "present")
     	SimulatedPresenceSensor.departed()
+}
+
+private debugMsg(message) {
+
+	if(settings.EnableDebug)
+    	log.debug message
 }
