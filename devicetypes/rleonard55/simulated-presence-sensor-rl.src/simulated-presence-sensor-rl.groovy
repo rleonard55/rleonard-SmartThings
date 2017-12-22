@@ -15,7 +15,7 @@
  */
 
 metadata {
-        definition (name: "Simulated Presence Sensor -RL", namespace: "rleonard55", author: "Rob Leonard") {
+    definition (name: "Simulated Presence Sensor -RL", namespace: "rleonard55", author: "Rob Leonard") {
         capability "Switch"
         capability "Refresh"
         capability "Presence Sensor"
@@ -23,6 +23,9 @@ metadata {
         
 		command "arrived"
 		command "departed"
+        command "setStateMessage"
+         
+        attribute "stateMessage", "string"
     }
 
 	simulator {
@@ -31,25 +34,32 @@ metadata {
 	}
     
     preferences {
-    	input("DebugMsg", "Bool", title: "Enable Debug Messages", defaultValue: false)
-		// input("presenceSensors", "capability.presenceSensor", title: "Presence sensor(s) to sync with", multiple: true, required: false)
+        //input "apiKey", "text", title: "IFTTT API Key", required: false
+        //input "makerOnEvent","text",title: "IFTTT On Event Name", required: false
+        //input "makerOffEvent","text",title: "IFTTT Off Event Name", required: false
+        input("DebugMsg", "bool", title: "Enable Debug Messages", defaultValue: false)
     }
 
-	tiles {
-		standardTile("button", "device.switch", canChangeIcon: false,  canChangeBackground: true) {
-			state "off", label: 'Away', action: "switch.on", icon: "st.Kids.kid10", backgroundColor: "#ffffff", nextState: "on"
-			state "on", label: 'Present', action: "switch.off", icon: "st.Kids.kid10", backgroundColor: "#00a0dc", nextState: "off"
+	tiles(scale: 2) {
+		standardTile("button", "device.switch", canChangeIcon: false,  canChangeBackground: false, width: 2, height: 2) {
+			state "off", label: "Away", action: "switch.on", icon: "st.presence.tile.not-present", backgroundColor: "#ffffff", nextState: "on"
+			state "on", label: "Present", action: "switch.off", icon: "st.presence.tile.present", backgroundColor: "#00a0dc", nextState: "off"
 		}
-		standardTile("presence", "device.presence", width: 2, height: 2, canChangeIcon: true, canChangeBackground: true) {
+		standardTile("presence", "device.presence", width: 4, height: 4, canChangeIcon: false, canChangeBackground: true) {
 			state("present", labelIcon:"st.presence.tile.mobile-present", action: "switch.off", nextState:"not present", backgroundColor:"#00a0dc")
 			state("not present", labelIcon:"st.presence.tile.mobile-not-present", action: "switch.on", nextState:"present", backgroundColor:"#ffffff")
 		}
-		standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
+		standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat",width: 2, height: 2) {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
-
+        standardTile("stateTitle", "device.stateTitle", inactiveLable: true, width:2, height:1, decoration: "flat", wordWrap: true) {
+        	state "default", label: "Last Known Location:"
+        }
+		valueTile("stateMessage", "device.stateMessage", inactiveLabel: true, width: 4, height: 1, decoration: "flat", wordWrap: true) {
+            state "default", label:'${currentValue}'
+        }
 		main (["presence"])
-		details(["presence","button", "refresh"])
+		details(["presence","button", "refresh","stateTitle","stateMessage"])
 	}
 }
 
@@ -72,6 +82,7 @@ def on() {
     	debug("Turning ON")
         sendEvent(name: "switch", value: "on", displayed: false)
         sendEvent(name: "presence", value: "present")
+        setStateMessage("Home")
     }	
     debug("Final value is : ${device.currentValue("presence")}")
 }
@@ -82,10 +93,12 @@ def off() {
     	debug ("Turning OFF")
         sendEvent(name: "switch", value: "off", displayed: false)
         sendEvent(name: "presence", value: "not present")
+        setStateMessage("Away")
     }
     
      debug ("Final value is : ${device.currentValue("presence")}")
 }
+
 
 def debug(String message) {
 	if(DebugMsg)
@@ -116,6 +129,13 @@ def parse(String description) {
 
 }
 
+def setStateMessage(String message) {
+    if(device.currentValue("stateMessage") != message) {
+        sendEvent(name:"stateMessage", value: message, isStateChange: true)
+    }
+    //send(name: "stateMessage", value: message, isStateChange: true)//, descriptionText: "${device.displayName} has no current weather alerts")
+}
+
 private String parseName(String description) {
 	if (description?.startsWith("presence: ")) {
 		return "presence"
@@ -144,5 +164,19 @@ private getState(String value) {
 		case "present": return "arrived"
 		case "not present": return "left"
 		default: return value
+	}
+}
+
+private sendIt(command) {
+	def apiURL = "https://maker.ifttt.com/trigger/${command}/with/key/${apiKey}"
+   // log.debug apiURL
+    try {
+         httpGet(apiURL) { resp ->
+             log.debug "response data: ${resp.data}"
+             log.debug "response contentType: ${resp.contentType}"
+         }
+        // log.debug("done")
+	} catch (e) {
+    	log.error "something went wrong: $e"
 	}
 }
