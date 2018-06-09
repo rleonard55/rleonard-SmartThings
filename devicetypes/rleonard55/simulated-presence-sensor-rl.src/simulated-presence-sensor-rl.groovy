@@ -131,7 +131,7 @@ def parse(String description) {
 
 def setStateMessage(String message) {
     if(device.currentValue("stateMessage") != message) {
-        sendEvent(name:"stateMessage", value: message, isStateChange: true)
+        sendEvent(name:"stateMessage", value: message, isStateChange: true, displayed: false)
     }
     //send(name: "stateMessage", value: message, isStateChange: true)//, descriptionText: "${device.displayName} has no current weather alerts")
 }
