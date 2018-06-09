@@ -1,6 +1,6 @@
 // This is just a start, but I hope others will take interest and help make it better.
-// It would be nice to add Locate and Current Status
-// TODO: Needs state check implemented sense start/stop calls the same action on 
+// It would be nice to add Current Status
+
 include 'asynchttp_v1'
 
 def clientVersion() {
