@@ -241,7 +241,7 @@ private LoginResponse(response, data){
 
     if (response.hasError()) {
         if(response.status==401)
-        	ProcessError("Authentication Failure, check credentials")
+        	ProcessError("Authentication Failure, check SmartStart credentials")
         else	
             ProcessError(response.errorMessage)
     } else {
@@ -302,7 +302,7 @@ private GetVehicleIDResponse(response, data){
             def id= Vehicles.findIndexOf{ it-> it.Name.equals(getVechicleName())}
 
             if(id == -1) {
-                ProcessError("Failed to find vehicle "+getVechicleName()+" on the server.")
+                ProcessError("Failed to find vehicle "+getVechicleName()+". Check SmartStart vehicle name.")
                 return
             }
 
@@ -452,7 +452,7 @@ trace "Entered <ProcessResponseStatus>"
             debug "304 returned"
             break
         case 401:
-        	error "Login failed, check credentials"
+        	error "Login failed, check SmartStart credentials"
             break
         default:
             warn "no handling for response with status $status"
