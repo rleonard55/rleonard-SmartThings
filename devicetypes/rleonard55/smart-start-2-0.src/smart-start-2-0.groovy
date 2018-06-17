@@ -8,62 +8,62 @@ def clientVersion() {
 }
 
 /**
- *  Smart Start 2.0
- *
- *  Copyright 2018 Rob Leonard
- *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
- *
- * Change log:
- * 2018-05-03 - (v00.02.01) Updated Instrumentation
- * 2018-06-16 - (v00.02.02) Lots of code cleanup, added proper encoding for user/pass & properties for Alexa
- */
- 
+*  Smart Start 2.0
+*
+*  Copyright 2018 Rob Leonard
+*
+*  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License. You may obtain a copy of the License at:
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+*  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+*  for the specific language governing permissions and limitations under the License.
+*
+* Change log:
+* 2018-05-03 - (v00.02.01) Updated Instrumentation
+* 2018-06-16 - (v00.02.02) Lots of code cleanup, added proper encoding for user/pass & properties for Alexa
+*/
+
 metadata {
-	definition(
+    definition(
         name: "Smart Start 2.0",
         namespace: "rleonard55",
         author: "Rob Leonard",	
         description: "Start/stop/arm/disarm/panic vehicle",
         singleInstance: false)
-        {
-		capability "timedSession"
-		capability "lock"
-		capability "switch"
-        
+    {
+        capability "timedSession"
+        capability "lock"
+        capability "switch"
+
         command "panic"
         command "trunk"
         command "locate"
         command "test"
         command "intentComplete"
         command "endRunning"
-        }
-	
-	preferences {
-		input("Username", "string", title:"SmartStart Username", description: "Please enter your SmartStart Username", defaultValue: "user" , required: true, displayDuringSetup: true)
-		input("Password", "password", title:"SmartStart Password", description: "Please enter your SmartStart Password", defaultValue: "password" , required: true, displayDuringSetup: true)
-		input("VehicleName", "string", title:"SmartStart Vehicle Name", description: "Please enter your SmartStart Vehicle Name", defaultValue: "My Car" , required: true, displayDuringSetup: true)
-		input("GPS", "bool", title: "GPS Features", description: "Do you have a device/plan that allows GPS features?", defaultValue: true, required: true, displayDuringSetup: true)
+    }
+
+    preferences {
+        input("Username", "string", title:"SmartStart Username", description: "Please enter your SmartStart Username", defaultValue: "user" , required: true, displayDuringSetup: true)
+        input("Password", "password", title:"SmartStart Password", description: "Please enter your SmartStart Password", defaultValue: "password" , required: true, displayDuringSetup: true)
+        input("VehicleName", "string", title:"SmartStart Vehicle Name", description: "Please enter your SmartStart Vehicle Name", defaultValue: "My Car" , required: true, displayDuringSetup: true)
+        input("GPS", "bool", title: "GPS Features", description: "Do you have a device/plan that allows GPS features?", defaultValue: true, required: true, displayDuringSetup: true)
         input("Trunk", "bool", title:"Trunk Feature", description: "Do you have the trunk feature?", defaultValue: true, required:true,  displayDuringSetup: true)
         input("StartMinutes","number",title:"Starter timeout minutes", description: "5 - 30", defaultValue: "15", required: true,range: "5..30", displayDuringSetup:true)
         input(name: "LoggingLevel", type: "enum", title: "Logging Level", options: ["trace","debug","info","warn","error"], defaultValue: error, required: true, displayDuringSetup: true)
     }
-    
-	simulator { }
 
-	tiles (scale: 2) {
+    simulator { }
+
+    tiles (scale: 2) {
         multiAttributeTile(name: "info", type:"generic", width:6, height:4) {
             tileAttribute("device.info", key: "PRIMARY_CONTROL") {
                 attributeState("default", label:'${currentValue}',backgroundColor:"#000000")
             }
-           	 tileAttribute("device.lastUpdate", key: "SECONDARY_CONTROL") {
+            tileAttribute("device.lastUpdate", key: "SECONDARY_CONTROL") {
                 attributeState("default", label:'Updated: ${currentValue}')
             }
         }
@@ -77,68 +77,30 @@ metadata {
             state "locate", label: 'Locating', icon: "st.Office.office13", backgroundColor: "#00a0dc"
             state "error", label: 'Error', icon: "st.Seasonal Fall.seasonal-fall-010", backgroundColor: "#ff0065"
         }
-        
         tileToggle("arm","lock","st.bmw.doors-locked","lock")
-       // standardTile("arm", "device.lock", width:3, height:2){
-       //     state "active", label: 'Lock', icon: "st.bmw.doors-locked", backgroundColor: "#ffffff", action: "lock", nextState:"sending"
-       //     state "sending", label: 'Sending\nLock', icon: "st.bmw.doors-locked", backgroundColor: "#00a0dc"
-       //     state "inactive", label: 'Lock',icon: "st.bmw.doors-locked", backgroundColor: "#d3d3d3"
-       // }
-       
         tileToggle("disarm","unlock","st.bmw.doors-unlocked","unlock")
-        //standardTile("disarm", "device.unlock", width:3, height:2){
-        //    state "active", label: 'Unlock', icon: "st.bmw.doors-unlocked", backgroundColor: "#ffffff", action: "unlock", nextState:"sending"
-        //    state "sending", label: 'Sending\nUnock', icon: "st.bmw.doors-unlocked", backgroundColor: "#00a0dc" 
-        //    state "inactive", label: 'Unlock', icon: "st.bmw.doors-unlocked", backgroundColor: "#d3d3d3"
-        //}
-        
         tileToggle("remote","start","st.samsung.da.RC_ic_power","start")
-     //   standardTile("start", "start", width:3, height:2){
-     //       state "active", label: 'Start', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#d5fdd5", action: "start", nextState:"sending"
-     //       state "sending", label: 'Sending\nStart', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#00a0dc"
-     //       state "inactive", label: 'Start', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#d3d3d3"
-     //   }
-     
         tileToggle("trunk","trunk","st.bmw.trunk_open","trunk")
-       // standardTile("trunk", "trunk", width:3, height:2){
-       //     state "active", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#ffffff", action: "trunk", nextState:"sending"
-       //     state "sending", label: 'Sending\nTrunk', icon: "st.bmw.trunk_open", backgroundColor: "#00a0dc"
-       //     state "inactive", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#d3d3d3"
-       //     state "NA", label:"",backgroundColor: "#ffffff"
-       // }        
-        
-         tileToggle("panic","panic","st.Office.office6","panic")
-     //   standardTile("panic", "panic", width:3, height: 2){
-     //       state "active", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#ff9999", action: "panic", nextState:"sending"
-     //       state "sending", label: 'Sending\nPanic', icon: "st.Office.office6", backgroundColor: "#00a0dc"
-     //       state "inactive", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#d3d3d3"
-     //   }
-     
-     tileToggle("locate","locate","st.Office.office13","locate")
-     tileToggle("blank","Smart Start","https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/viper_smart_start.png","",6,1)
-     //   standardTile("locate", "locate", width:3, height: 2){
-     //       state "active", label: 'Locate', icon: "st.Office.office13", backgroundColor: "#ffffff", action: "locate", nextState:"sending"
-     //       state "sending", label: 'Sending\nLocate', icon: "st.Office.office13", backgroundColor: "#00a0dc"
-     //       state "inactive", label: 'Locate', icon: "st.Office.office13", backgroundColor: "#d3d3d3"
-     //       state "NA", label:"",backgroundColor: "#ffffff"
-     //   }
+        tileToggle("panic","panic","st.Office.office6","panic")
+        tileToggle("locate","locate","st.Office.office13","locate")
+        tileToggle("blank","Smart Start","https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/viper_smart_start.png","",6,1)
         standardTile("test","Test", width:3, height:2){
-        	state "active", label: 'Test', icon: "st.Office.office6", backgroundColor: "#ff9999", action: "test"
+            state "active", label: 'Test', icon: "st.Office.office6", backgroundColor: "#ff9999", action: "test"
         }
-		
+
         main (["command"])
         //details(["info","lock","unlock","remote","panic","trunk","locate","test"])
         details( ["info","arm","disarm","remote","blank","panic","trunk","locate"])
-	}
+    }
 }
 private tileToggle(varName, label, icon, method,width=2,height=3) {
-      return  standardTile("${varName}", "device.${varName}", inactiveLabel:false, decoration:"flat", width:width, height:height) {
-            state "active", label:"${label}", icon:"${icon}", action:"${method}",nextState:"sending"//,backgroundColor: "#ffffff"
-            state "sending", label:"Sending\n${label}", icon:"${icon}"//, backgroundColor: "#00a0dc"
-            state "inactive", label:"${label}", icon:"https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/Loading.gif"//, backgroundColor: "#d3d3d3" 
-            state "NA", label:""
-            //state "NA", label:"${label}",backgroundColor: "#ffffff", icon: "https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/NA.png"
-		}
+    return  standardTile("${varName}", "device.${varName}", inactiveLabel:false, decoration:"flat", width:width, height:height) {
+        state "active", label:"${label}", icon:"${icon}", action:"${method}",nextState:"sending"//,backgroundColor: "#ffffff"
+        state "sending", label:"Sending\n${label}", icon:"${icon}"//, backgroundColor: "#00a0dc"
+        state "inactive", label:"${label}", icon:"https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/Loading.gif"//, backgroundColor: "#d3d3d3" 
+        state "NA", label:""
+        //state "NA", label:"${label}",backgroundColor: "#ffffff", icon: "https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/NA.png"
+    }
 }
 def getServerUrl() { return "https://colt.calamp-ts.com" }
 def getLoginUrl(user, pass) { return getServerUrl()+"/auth/login/${encode(user)}/${encode(pass)}"}
@@ -150,42 +112,42 @@ def void lock() {
     send("arm","Locking")
 }
 def void unlock() {
-	info "Received Unlock Request"
+    info "Received Unlock Request"
     send("disarm","Unlocking")
 }
 
 def void on() {
-	start()
+    start()
 }
 def void off() {
-	stop()
+    stop()
 }
 def void start() {
-	info "Received Start Request"
+    info "Received Start Request"
     state.remoteType="Start"
     send("remote","Starting")
 }
 def void stop() {
-	info "Received Stop Request"
+    info "Received Stop Request"
     state.remoteType="Stop"
     send("remote","Stopping")
 }
 
 def void trunk(){
-	info "Received Trunk Open Request"
+    info "Received Trunk Open Request"
     send("trunk","Sending Trunk")
 }
 def void panic(){
-	info "Received Panic Request"
+    info "Received Panic Request"
     send("panic","Sending Panic")
 }
 def void locate(){
-	info "Received Locate Request"
+    info "Received Locate Request"
     send("locate","Locating")
 }
 
 def void initialize() {
-	trace "Entered <initialize>"
+    trace "Entered <initialize>"
     trace "Initialize called"// settings: $settings"
     try {
         if (!state.init) {
@@ -200,7 +162,7 @@ def void initialize() {
     }
 }
 def void updated() {
-	trace "Entered <updated>"
+    trace "Entered <updated>"
     endRunning()
     unschedule()
     //debug "Update called settings: $settings"
@@ -217,7 +179,7 @@ def void updated() {
 private void send(String verb, String friendlyVerb=null){
     trace "Entered <Send>"
     initialize()
-    
+
     ///
     if(friendlyVerb == null) friendlyVerb = verb
     updateStatus(friendlyVerb)
@@ -225,12 +187,12 @@ private void send(String verb, String friendlyVerb=null){
     updateTile(verb,"sending")
     updateTile("command",verb,true,true)
 
-	if(Trunk && verb !="trunk") updateTile("trunk")
+    if(Trunk && verb !="trunk") updateTile("trunk")
     if(GPS && verb != "locate") updateTile("locate")
-    
+
     ///
     state.Intent= verb
-    
+
     trace "Logging in"    
     login()        
 }
@@ -250,16 +212,16 @@ private void login(){
     webRequestInit(params,'loginResponse')
 }
 private void loginResponse(response, data){
-	trace "Entered <loginResponse>"
+    trace "Entered <loginResponse>"
     debug "Async Login Reply Received"
 
     if (response.hasError()) {
         if(response.status==401)
-        	processError("Authentication Failure, check SmartStart credentials")
+        processError("Authentication Failure, check SmartStart credentials")
         else	
             processError(response.errorMessage)
     } else {
-        
+
         def results
         try {
             results = response.json
@@ -267,22 +229,22 @@ private void loginResponse(response, data){
             processError( "error parsing json from response: $e")
             return
         }
-        
+
         if (results) {
-        	state.SessionId=results.Return.Results.SessionID
-        	debug "Received Session ID: "+state.SessionId
+            state.SessionId=results.Return.Results.SessionID
+            debug "Received Session ID: "+state.SessionId
         } else {
             processError( "did not get json results from response body: $response.data")
             return
         }
-        
+
         // Next
         getVehicleID()
     }
 }
 
 private void getVehicleID() {
-	trace "Entered <getVehicleID>"
+    trace "Entered <getVehicleID>"
     debug "Building Get Vehicle URL"
     def Vehicles
     def VehicleId = ""
@@ -322,27 +284,27 @@ private void getVehicleIDResponse(response, data){
 
             assert id != -1
             state.VechicleId = Vehicles[id].DeviceId
-            
+
             //def actions
             //Vehicles[id].AvailActions.each{ it ->
             //	actions = actions+ it?.Name+", "
             //}
             //debug actions
-            
+
             debug "Found Vehicle Id: " + state.VehicleId
             // return VehicleId
         } else {
             processError( "did not get json results from response body: $response.data")
             return
         }
-        
+
         // Next
         sendIntent()
     }
 }
 
 private void sendIntent(){
-	trace "Entered <sendIntent>"
+    trace "Entered <sendIntent>"
     def url = getSendCommandUrl()
     debug "Send Action Url is ${url}"
 
@@ -355,7 +317,7 @@ private void sendIntent(){
     webRequestInit(params,'sendIntentResponse')
 }
 private void sendIntentResponse(response,data){
-	trace "Entered <sendIntentResponse>"
+    trace "Entered <sendIntentResponse>"
     debug "Async Intent Reply Recived"
     if (response.hasError()) {
         processError( "response has error: $response.errorMessage")
@@ -368,17 +330,17 @@ private void sendIntentResponse(response,data){
             processError( "error parsing json from response: $e")
             return
         }
-        
+
         //debug results
         if(state.Intent == "locate")
-        	processLocateResponse(results)
-        
+        processLocateResponse(results)
+
         // Next
         intentComplete()
     }
 }
 private void processLocateResponse(results){
-	trace "Entered <processLocateResponse>"
+    trace "Entered <processLocateResponse>"
     debug results
     //state.LastLocateLat=results.Return.Results.Device.Latitude
     //state.LastLocateLon=results.Return.Results.Device.Longitude
@@ -386,14 +348,14 @@ private void processLocateResponse(results){
 }
 
 private void webRequestInit(params, responseHandlerMethod){
-trace "Entered <webRequestInit>"
+    trace "Entered <webRequestInit>"
     try 
     {
         debug "Starting async httpGet"
         asynchttp_v1.get(responseHandlerMethod, params)
     }
     catch(java.lang.SecurityException e){
-    	processError("Endpoint is blacklisted or not responding,try again later")
+        processError("Endpoint is blacklisted or not responding,try again later")
     }
     catch (e) 
     {
@@ -401,8 +363,8 @@ trace "Entered <webRequestInit>"
     }
 }
 private void processError(Error){
-	trace "Entered <processError>"
-	error Error
+    trace "Entered <processError>"
+    error Error
     state.Intent = "error"
 
     sendEvent(name:"command", value:"error",displayed:false, isStateChange: true)
@@ -412,64 +374,64 @@ private void processError(Error){
 }
 
 def void test(verb="locate"){
-	//trace "Entered <test>"
-	//info verb
-	//locate
+    //trace "Entered <test>"
+    //info verb
+    //locate
     //READ_ACTIVE
     //READ_CURRENT
-	//send(verb)
-    
-      sendEvent(name: "info", value:"error: dd")
+    //send(verb)
+
+    sendEvent(name: "info", value:"error: dd")
 }
 def void intentComplete(){
-	trace "Entered <intentComplete>"
+    trace "Entered <intentComplete>"
     info "Finalizing"
 
     sendEvent(name:"command", value:"default",displayed:false, isStateChange: true)
-    
+
     switch (state.Intent) {
         case "arm":
-        	updateStatus("Last Action: Lock")
-        	sendEvent(name: "lock", value: "locked", displayed: false, isStateChange: true)
-        	break
+        updateStatus("Last Action: Lock")
+        sendEvent(name: "lock", value: "locked", displayed: false, isStateChange: true)
+        break
         case "disarm":
-            updateStatus("Last Action: Unlock")
-        	sendEvent(name: "lock", value: "unlocked", displayed: false, isStateChange: true)
-            break
+        updateStatus("Last Action: Unlock")
+        sendEvent(name: "lock", value: "unlocked", displayed: false, isStateChange: true)
+        break
         case "remote":
-            updateStatus("Last Action: Start/Stop")
-            endRunning()
-            unschedule()
-            
-        	if(state.remoteType=="Start"){
-                sendEvent(name: "sessionStatus", value: "running", displayed: false, isStateChange: true)
-                sendEvent(name: "switch", value: "on", displayed: false, isStateChange: true)
-                runIn(60*StartMinutes,endRunning)
-            }
-            
-            state.remoteType = null
-            break
+        updateStatus("Last Action: Start/Stop")
+        endRunning()
+        unschedule()
+
+        if(state.remoteType=="Start"){
+            sendEvent(name: "sessionStatus", value: "running", displayed: false, isStateChange: true)
+            sendEvent(name: "switch", value: "on", displayed: false, isStateChange: true)
+            runIn(60*StartMinutes,endRunning)
+        }
+
+        state.remoteType = null
+        break
         case "panic":
-             updateStatus("Last Action: Panic")
+        updateStatus("Last Action: Panic")
         break
         case "trunk":
-            updateStatus("Last Action: Trunk")
-        	break
+        updateStatus("Last Action: Trunk")
+        break
         case "locate":
-            updateStatus("Last Action: Locate "+state.LastLocateAddress)
-        	break
+        updateStatus("Last Action: Locate "+state.LastLocateAddress)
+        break
         case "error":
-        	break
+        break
         default:
             warn "no handling for intent with status $state.Intent"
         break
     }
-    
+
     state.Started=0
     state.Intent=""
     state.SessionId=""
     state.VechicleId=""
-    
+
     resumeProcessing()
 }
 def void resumeProcessing(){
@@ -477,7 +439,7 @@ def void resumeProcessing(){
     debug "resuming processing"
     updateTiles(["locate","trunk"],"NA")
     updateTiles(["remote","arm","disarm","panic"],"active")
-    
+
     if(Trunk) updateTile("trunk", "active")
     if(GPS) updateTile("locate", "active")
 }
@@ -485,40 +447,40 @@ def void resumeProcessing(){
 def void endRunning(){
     trace "Entered <endRunning>"
     debug "endRunning"
-	sendEvent(name: "sessionStatus", value: "stopped", displayed: false, isStateChange: true)
+    sendEvent(name: "sessionStatus", value: "stopped", displayed: false, isStateChange: true)
     sendEvent(name: "switch", value: "off", displayed: false, isStateChange: true)
 }
 private void updateStatus(String status){
-	debug "Updating status"
+    debug "Updating status"
     sendEvent(name: "info", value: status, displayed: false, isStateChange: true)
-	sendEvent(name: "lastUpdate", value: formatLocalTime(now()), displayed: false, isStateChange: true)
+    sendEvent(name: "lastUpdate", value: formatLocalTime(now()), displayed: false, isStateChange: true)
 }
 private void updateTile(String name, String stateString ="inactive", boolean display = false, boolean stateChange = true){
-	sendEvent(name:name, value:stateString,displayed:display, isStateChange: stateChange)
+    sendEvent(name:name, value:stateString,displayed:display, isStateChange: stateChange)
 }
 private void updateTiles(names, String stateString ="inactive", boolean display = false, boolean stateChange = true){
-	names.each{name->
+    names.each{name->
         updateTile(name,stateString,display,stateChange)
     }
 }
 private String formatLocalTime(time, format = "EEE, MMM d yyyy @ h:mm a z") {
-	trace "Entered <formatLocalTime>"
+    trace "Entered <formatLocalTime>"
     if (time instanceof Long) {
-    	time = new Date(time)
+        time = new Date(time)
     }
-	if (time instanceof String) {
-    	//get UTC time
-    	time = timeToday(time, location.timeZone)
+    if (time instanceof String) {
+        //get UTC time
+        time = timeToday(time, location.timeZone)
     }   
     if (!(time instanceof Date)) {
-    	return null
+        return null
     }
-	def formatter = new java.text.SimpleDateFormat(format)
-	formatter.setTimeZone(location.timeZone)
-	return formatter.format(time)
+    def formatter = new java.text.SimpleDateFormat(format)
+    formatter.setTimeZone(location.timeZone)
+    return formatter.format(time)
 }
 private String encode(String value, String encoding ="UTF-8"){
-	return URLEncoder.encode(value, encoding)
+    return URLEncoder.encode(value, encoding)
 }
 
 def void trace(message,Throwable e= null) {log(message,"trace",e)}
@@ -528,44 +490,44 @@ def void warn(message,Throwable e= null) {log(message,"warn",e)}
 def void error(message,Throwable e= null) {log(message,"error",e)}
 def void log(message, level = "trace",Throwable e= null) {
     if(LoggingLevel == debug && level == "trace") return
-	if(LoggingLevel == info && (level == "trace" || level == "debug")) return
+    if(LoggingLevel == info && (level == "trace" || level == "debug")) return
     if(LoggingLevel == warn && (level == "trace" || level == "debug" || level == "info")) return
     if(LoggingLevel == error && level != "error") return
-    
+
     switch (level) {
         case "trace":
         if(e == null)
-        	log.trace(message)
+        log.trace(message)
         else
-        	log.trace(message,e)
+            log.trace(message,e)
         break;
 
         case "debug":
         if(e == null)
-            log.debug(message)
+        log.debug(message)
         else
-        	log.debug(message,e)
+            log.debug(message,e)
         break;
 
         case "info":
         if(e == null)
-        	log.info (message)
+        log.info (message)
         else
-        	log.info (message,e)
+            log.info (message,e)
         break;
 
         case "warn":
         if(e == null)
-        	log.warn (message)
+        log.warn (message)
         else
-        	log.warn (message,e)
+            log.warn (message,e)
         break;
 
         case "error":
         if(e == null)
-        	log.error (message)
+        log.error (message)
         else
-        	log.error (message,e)
+            log.error (message,e)
         break;
 
         default:
