@@ -4,7 +4,7 @@
 include 'asynchttp_v1'
 
 def clientVersion() {
-    return "00.02.01"
+    return "00.02.02"
 }
 
 /**
@@ -23,6 +23,7 @@ def clientVersion() {
  *
  * Change log:
  * 2018-05-03 - (v00.02.01) Updated Instrumentation
+ * 2018-06-16 - (v00.02.02) Lots of code cleanup, added proper encoding for user/pass & properties for Alexa
  */
  
 metadata {
@@ -41,7 +42,8 @@ metadata {
         command "trunk"
         command "locate"
         command "test"
-        command "IntentComplete"
+        command "intentComplete"
+        command "endRunning"
         }
 	
 	preferences {
@@ -50,7 +52,8 @@ metadata {
 		input("VehicleName", "string", title:"SmartStart Vehicle Name", description: "Please enter your SmartStart Vehicle Name", defaultValue: "My Car" , required: true, displayDuringSetup: true)
 		input("GPS", "bool", title: "GPS Features", description: "Do you have a device/plan that allows GPS features?", defaultValue: true, required: true, displayDuringSetup: true)
         input("Trunk", "bool", title:"Trunk Feature", description: "Do you have the trunk feature?", defaultValue: true, required:true,  displayDuringSetup: true)
-        input(name: "LoggingLevel", type: "enum", title: "Logging Level", options: ["trace","debug","info","warn","error"], defaultValue: info, required: true, displayDuringSetup: true)
+        input("StartMinutes","number",title:"Starter timeout minutes", description: "5 - 30", defaultValue: "15", required: true,range: "5..30", displayDuringSetup:true)
+        input(name: "LoggingLevel", type: "enum", title: "Logging Level", options: ["trace","debug","info","warn","error"], defaultValue: error, required: true, displayDuringSetup: true)
     }
     
 	simulator { }
@@ -66,166 +69,177 @@ metadata {
         }
         standardTile("command", "command", width:3, height:2){
             state "default", label: 'Lock', icon: "st.Transportation.transportation8", backgroundColor: "#ffffff", action: "lock"//, nextState:"lock"
-            state "lock", label: 'Locking', icon: "st.bmw.doors-locked", backgroundColor: "#00a0dc"
-            state "unlock", label: 'Unocking', icon: "st.bmw.doors-unlocked", backgroundColor: "#00a0dc"
+            state "arm", label: 'Locking', icon: "st.bmw.doors-locked", backgroundColor: "#00a0dc"
+            state "disarm", label: 'Unocking', icon: "st.bmw.doors-unlocked", backgroundColor: "#00a0dc"
             state "start", label: 'Starting', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#00a0dc"
             state "trunk", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#00a0dc"
             state "panic", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#00a0dc"
             state "locate", label: 'Locating', icon: "st.Office.office13", backgroundColor: "#00a0dc"
             state "error", label: 'Error', icon: "st.Seasonal Fall.seasonal-fall-010", backgroundColor: "#ff0065"
         }
-        standardTile("lock", "device.lock", width:3, height:2){
-            state "active", label: 'Lock', icon: "st.bmw.doors-locked", backgroundColor: "#ffffff", action: "lock", nextState:"sending"
-            state "sending", label: 'Sending\nLock', icon: "st.bmw.doors-locked", backgroundColor: "#00a0dc"
-            state "inactive", label: 'Lock',icon: "st.bmw.doors-locked", backgroundColor: "#d3d3d3"
-        }
-        standardTile("unlock", "device.unlock", width:3, height:2){
-            state "active", label: 'Unlock', icon: "st.bmw.doors-unlocked", backgroundColor: "#ffffff", action: "unlock", nextState:"sending"
-            state "sending", label: 'Sending\nUnock', icon: "st.bmw.doors-unlocked", backgroundColor: "#00a0dc" 
-            state "inactive", label: 'Unlock', icon: "st.bmw.doors-unlocked", backgroundColor: "#d3d3d3"
-        }
-        standardTile("start", "start", width:3, height:2){
-            state "active", label: 'Start', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#d5fdd5", action: "start", nextState:"sending"
-            state "sending", label: 'Sending\nStart', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#00a0dc"
-            state "inactive", label: 'Start', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#d3d3d3"
-        }
-        standardTile("trunk", "trunk", width:3, height:2){
-            state "active", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#ffffff", action: "trunk", nextState:"sending"
-            state "sending", label: 'Sending\nTrunk', icon: "st.bmw.trunk_open", backgroundColor: "#00a0dc"
-            state "inactive", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#d3d3d3"
-            state "NA", label:"",backgroundColor: "#ffffff"
-        }        
-        standardTile("panic", "panic", width:3, height: 2){
-            state "active", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#ff9999", action: "panic", nextState:"sending"
-            state "sending", label: 'Sending\nPanic', icon: "st.Office.office6", backgroundColor: "#00a0dc"
-            state "inactive", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#d3d3d3"
-        }
-        standardTile("locate", "locate", width:3, height: 2){
-            state "active", label: 'Locate', icon: "st.Office.office13", backgroundColor: "#ffffff", action: "locate", nextState:"sending"
-            state "sending", label: 'Sending\nLocate', icon: "st.Office.office13", backgroundColor: "#00a0dc"
-            state "inactive", label: 'Locate', icon: "st.Office.office13", backgroundColor: "#d3d3d3"
-            state "NA", label:"",backgroundColor: "#ffffff"
-        }
+        
+        tileToggle("arm","lock","st.bmw.doors-locked","lock")
+       // standardTile("arm", "device.lock", width:3, height:2){
+       //     state "active", label: 'Lock', icon: "st.bmw.doors-locked", backgroundColor: "#ffffff", action: "lock", nextState:"sending"
+       //     state "sending", label: 'Sending\nLock', icon: "st.bmw.doors-locked", backgroundColor: "#00a0dc"
+       //     state "inactive", label: 'Lock',icon: "st.bmw.doors-locked", backgroundColor: "#d3d3d3"
+       // }
+       
+        tileToggle("disarm","unlock","st.bmw.doors-unlocked","unlock")
+        //standardTile("disarm", "device.unlock", width:3, height:2){
+        //    state "active", label: 'Unlock', icon: "st.bmw.doors-unlocked", backgroundColor: "#ffffff", action: "unlock", nextState:"sending"
+        //    state "sending", label: 'Sending\nUnock', icon: "st.bmw.doors-unlocked", backgroundColor: "#00a0dc" 
+        //    state "inactive", label: 'Unlock', icon: "st.bmw.doors-unlocked", backgroundColor: "#d3d3d3"
+        //}
+        
+        tileToggle("remote","start","st.samsung.da.RC_ic_power","start")
+     //   standardTile("start", "start", width:3, height:2){
+     //       state "active", label: 'Start', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#d5fdd5", action: "start", nextState:"sending"
+     //       state "sending", label: 'Sending\nStart', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#00a0dc"
+     //       state "inactive", label: 'Start', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#d3d3d3"
+     //   }
+     
+        tileToggle("trunk","trunk","st.bmw.trunk_open","trunk")
+       // standardTile("trunk", "trunk", width:3, height:2){
+       //     state "active", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#ffffff", action: "trunk", nextState:"sending"
+       //     state "sending", label: 'Sending\nTrunk', icon: "st.bmw.trunk_open", backgroundColor: "#00a0dc"
+       //     state "inactive", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#d3d3d3"
+       //     state "NA", label:"",backgroundColor: "#ffffff"
+       // }        
+        
+         tileToggle("panic","panic","st.Office.office6","panic")
+     //   standardTile("panic", "panic", width:3, height: 2){
+     //       state "active", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#ff9999", action: "panic", nextState:"sending"
+     //       state "sending", label: 'Sending\nPanic', icon: "st.Office.office6", backgroundColor: "#00a0dc"
+     //       state "inactive", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#d3d3d3"
+     //   }
+     
+     tileToggle("locate","locate","st.Office.office13","locate")
+     tileToggle("blank","Smart Start","https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/viper_smart_start.png","",6,1)
+     //   standardTile("locate", "locate", width:3, height: 2){
+     //       state "active", label: 'Locate', icon: "st.Office.office13", backgroundColor: "#ffffff", action: "locate", nextState:"sending"
+     //       state "sending", label: 'Sending\nLocate', icon: "st.Office.office13", backgroundColor: "#00a0dc"
+     //       state "inactive", label: 'Locate', icon: "st.Office.office13", backgroundColor: "#d3d3d3"
+     //       state "NA", label:"",backgroundColor: "#ffffff"
+     //   }
         standardTile("test","Test", width:3, height:2){
         	state "active", label: 'Test', icon: "st.Office.office6", backgroundColor: "#ff9999", action: "test"
         }
 		
         main (["command"])
-        //details(["info","lock","unlock","start","panic","trunk","locate","test"])
-        details(["info","lock","unlock","start","panic","trunk","locate"])
+        //details(["info","lock","unlock","remote","panic","trunk","locate","test"])
+        details( ["info","arm","disarm","remote","blank","panic","trunk","locate"])
 	}
 }
-
+private tileToggle(varName, label, icon, method,width=2,height=3) {
+      return  standardTile("${varName}", "device.${varName}", inactiveLabel:false, decoration:"flat", width:width, height:height) {
+            state "active", label:"${label}", icon:"${icon}", action:"${method}",nextState:"sending"//,backgroundColor: "#ffffff"
+            state "sending", label:"Sending\n${label}", icon:"${icon}"//, backgroundColor: "#00a0dc"
+            state "inactive", label:"${label}", icon:"https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/Loading.gif"//, backgroundColor: "#d3d3d3" 
+            state "NA", label:""
+            //state "NA", label:"${label}",backgroundColor: "#ffffff", icon: "https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/NA.png"
+		}
+}
 def getServerUrl() { return "https://colt.calamp-ts.com" }
-def getLoginUrl(user, pass) { return getServerUrl()+"/auth/login/${user}/${pass}"}
+def getLoginUrl(user, pass) { return getServerUrl()+"/auth/login/${encode(user)}/${encode(pass)}"}
 def getVehicleIdUrl() { return getServerUrl()+"/device/advancedsearch?sessid=${state.SessionId}"}
-def getSendCommandUrl(){return getServerUrl()+"/device/sendcommand/${state.VechicleId}/${state.Intent}?sessid=${state.SessionId}"}
+def getSendCommandUrl() {return getServerUrl()+"/device/sendcommand/${state.VechicleId}/${state.Intent}?sessid=${state.SessionId}"}
 
-private getUsername() {	getDevicePreferenceByName(device, "Username") }
-private getPassword() {	getDevicePreferenceByName(device, "Password") }
-private getVechicleName() { getDevicePreferenceByName(device, "VehicleName") }	
-private getLoglevel() { getDevicePreferenceByName(device,"LoggingLevel") }
-private getGPS() { getDevicePreferenceByName(device,"GPS") }
-
-def lock() {
+def void lock() {
     info "Received Lock Request"
-    sendEvent(name:"command", value:"lock",displayed:true, isStateChange: true)
-    sendEvent(name:"lock", value:"sending",displayed:false, isStateChange: true)
-    sendEvent(name:"unlock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"start", value:"inactive",displayed:false, isStateChange: true)
-    if(Trunk) sendEvent(name:"trunk", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"panic", value:"inactive",displayed:false, isStateChange: true)
-    if(GPS=='true') sendEvent(name:"locate", value:"inactive",displayed:false, isStateChange: true)
-    send("arm")
+    send("arm","Locking")
 }
-def unlock() {
+def void unlock() {
 	info "Received Unlock Request"
-    sendEvent(name:"command", value:"unlock",displayed:false, isStateChange: true)
-    sendEvent(name:"lock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"unlock", value:"sending",displayed:true, isStateChange: true)
-    sendEvent(name:"start", value:"inactive",displayed:false, isStateChange: true)
-    if(Trunk) sendEvent(name:"trunk", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"panic", value:"inactive",displayed:false, isStateChange: true)
-    if(GPS=='true') sendEvent(name:"locate", value:"inactive",displayed:false, isStateChange: true)
-	send("disarm")
+    send("disarm","Unlocking")
 }
-def on() {
+
+def void on() {
 	start()
 }
-def off() {
+def void off() {
 	stop()
 }
-
-def start() {
+def void start() {
 	info "Received Start Request"
-    sendEvent(name:"command", value:"start",displayed:true, isStateChange: true)
-    sendEvent(name:"lock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"unlock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"start", value:"sending",displayed:false, isStateChange: true)
-    if(Trunk) sendEvent(name:"trunk", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"panic", value:"inactive",displayed:false, isStateChange: true)
-    if(GPS=='true') sendEvent(name:"locate", value:"inactive",displayed:false, isStateChange: true)
-	send("remote")
+    state.remoteType="Start"
+    send("remote","Starting")
 }
-def stop() {
+def void stop() {
 	info "Received Stop Request"
-    sendEvent(name:"command", value:"start",displayed:true, isStateChange: true)
-    sendEvent(name:"lock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"unlock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"start", value:"sending",displayed:false, isStateChange: true)
-    if(Trunk) sendEvent(name:"trunk", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"panic", value:"inactive",displayed:false, isStateChange: true)
-    if(GPS=='true') sendEvent(name:"locate", value:"inactive",displayed:false, isStateChange: true)
-    send("remote")
-}
-def trunk(){
-	info "Received Trunk Open Request"
-    sendEvent(name:"command", value:"trunk",displayed:true, isStateChange: true)
-    sendEvent(name:"lock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"unlock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"start", value:"inactive",displayed:false, isStateChange: true)
-    if(Trunk) sendEvent(name:"trunk", value:"sending",displayed:false, isStateChange: true)
-    sendEvent(name:"panic", value:"inactive",displayed:false, isStateChange: true)
-    if(GPS=='true') sendEvent(name:"locate", value:"inactive",displayed:false, isStateChange: true)
-		send("trunk")
-}
-def panic(){
-	info "Received Panic Request"
-    sendEvent(name:"command", value:"panic",displayed:true, isStateChange: true)
-    sendEvent(name:"lock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"unlock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"start", value:"inactive",displayed:false, isStateChange: true)
-    if(Trunk) sendEvent(name:"trunk", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"panic", value:"sending",displayed:false, isStateChange: true)
-    if(GPS=='true') sendEvent(name:"locate", value:"inactive",displayed:false, isStateChange: true)
-    send("panic")
-}
-def locate(){
-	info "Received Locate Request"
-    sendEvent(name:"command", value:"locate",displayed:true, isStateChange: true)
-    sendEvent(name:"lock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"unlock", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"start", value:"inactive",displayed:false, isStateChange: true)
-    if(Trunk) sendEvent(name:"trunk", value:"inactive",displayed:false, isStateChange: true)
-    sendEvent(name:"panic", value:"inactive",displayed:false, isStateChange: true)
-    if(GPS=='true') sendEvent(name:"locate", value:"sending",displayed:false, isStateChange: true)
-    send("locate")
+    state.remoteType="Stop"
+    send("remote","Stopping")
 }
 
-private send(Action){
+def void trunk(){
+	info "Received Trunk Open Request"
+    send("trunk","Sending Trunk")
+}
+def void panic(){
+	info "Received Panic Request"
+    send("panic","Sending Panic")
+}
+def void locate(){
+	info "Received Locate Request"
+    send("locate","Locating")
+}
+
+def void initialize() {
+	trace "Entered <initialize>"
+    trace "Initialize called"// settings: $settings"
+    try {
+        if (!state.init) {
+            state.init = true
+        }
+        state.Started = now()
+        state.Intent=""
+        state.SessionId=""
+        state.VechicleId=""
+    } catch (e) {
+        warn "initialize() threw $e"
+    }
+}
+def void updated() {
+	trace "Entered <updated>"
+    endRunning()
+    unschedule()
+    //debug "Update called settings: $settings"
+    try {
+        if (!state.init) {
+            state.init = true
+        }
+        resumeProcessing()
+    } catch (e) {
+        warn "updated() threw $e"
+    }
+}
+
+private void send(String verb, String friendlyVerb=null){
     trace "Entered <Send>"
     initialize()
-    state.Intent=Action
+    
+    ///
+    if(friendlyVerb == null) friendlyVerb = verb
+    updateStatus(friendlyVerb)
+    updateTiles(["arm","disarm","remote","panic"])
+    updateTile(verb,"sending")
+    updateTile("command",verb,true,true)
+
+	if(Trunk && verb !="trunk") updateTile("trunk")
+    if(GPS && verb != "locate") updateTile("locate")
+    
+    ///
+    state.Intent= verb
     
     trace "Logging in"    
     login()        
 }
 
-private login(){
+private void login(){
     trace "Entered <login>"
     debug "Building login URL"
-    def url = getLoginUrl(getUsername(),getPassword())
-   // debug "the url is: "+ url
+    def url = getLoginUrl(Username,Password)
+    // debug "the url is: "+ url
 
     def params = 
         [
@@ -233,24 +247,24 @@ private login(){
             contentType: 'application/json'
         ]
 
-    WebRequestInit(params,'LoginResponse')
+    webRequestInit(params,'loginResponse')
 }
-private LoginResponse(response, data){
+private void loginResponse(response, data){
 	trace "Entered <loginResponse>"
     debug "Async Login Reply Received"
 
     if (response.hasError()) {
         if(response.status==401)
-        	ProcessError("Authentication Failure, check SmartStart credentials")
+        	processError("Authentication Failure, check SmartStart credentials")
         else	
-            ProcessError(response.errorMessage)
+            processError(response.errorMessage)
     } else {
         
         def results
         try {
             results = response.json
         } catch (e) {
-            ProcessError( "error parsing json from response: $e")
+            processError( "error parsing json from response: $e")
             return
         }
         
@@ -258,17 +272,17 @@ private LoginResponse(response, data){
         	state.SessionId=results.Return.Results.SessionID
         	debug "Received Session ID: "+state.SessionId
         } else {
-            ProcessError( "did not get json results from response body: $response.data")
+            processError( "did not get json results from response body: $response.data")
             return
         }
         
         // Next
-        GetVehicleID()
+        getVehicleID()
     }
 }
 
-private GetVehicleID() {
-	trace "Entered <GetVehicleID>"
+private void getVehicleID() {
+	trace "Entered <getVehicleID>"
     debug "Building Get Vehicle URL"
     def Vehicles
     def VehicleId = ""
@@ -280,29 +294,29 @@ private GetVehicleID() {
             contentType: 'application/json'
         ]
 
-    WebRequestInit(params,'GetVehicleIDResponse')
+    webRequestInit(params,'getVehicleIDResponse')
 }
-private GetVehicleIDResponse(response, data){
-    trace "Entered <GetVehicleIDResponse>"
+private void getVehicleIDResponse(response, data){
+    trace "Entered <getVehicleIDResponse>"
     debug "Async VehicleID Reply Recived"
     if (response.hasError()) {
-        ProcessError( "response has error: $response.errorMessage")
+        processError( "response has error: $response.errorMessage")
     } else {
         def results
         try {
             results = response.json
         } catch (e) {
-            ProcessError( "error parsing json from response: $e")
+            processError( "error parsing json from response: $e")
             return
         }
 
         if (results) {
             //debug results.Return.Results.Devices
             def Vehicles=results.Return.Results.Devices
-            def id= Vehicles.findIndexOf{ it-> it.Name.equals(getVechicleName())}
+            def id= Vehicles.findIndexOf{ it-> it.Name.equals(VehicleName)}
 
             if(id == -1) {
-                ProcessError("Failed to find vehicle "+getVechicleName()+". Check SmartStart vehicle name.")
+                processError("Failed to find vehicle {"+VehicleName+"}. Check SmartStart vehicle name.")
                 return
             }
 
@@ -315,20 +329,20 @@ private GetVehicleIDResponse(response, data){
             //}
             //debug actions
             
-            debug "Returning Vehicle Id: " + state.VehicleId
+            debug "Found Vehicle Id: " + state.VehicleId
             // return VehicleId
         } else {
-            ProcessError( "did not get json results from response body: $response.data")
+            processError( "did not get json results from response body: $response.data")
             return
         }
         
         // Next
-        SendIntent()
+        sendIntent()
     }
 }
 
-private SendIntent(){
-	trace "Entered <SendIntent>"
+private void sendIntent(){
+	trace "Entered <sendIntent>"
     def url = getSendCommandUrl()
     debug "Send Action Url is ${url}"
 
@@ -338,84 +352,66 @@ private SendIntent(){
             contentType: 'application/json'
         ]
 
-    WebRequestInit(params,'SendIntentResponse')
+    webRequestInit(params,'sendIntentResponse')
 }
-private SendIntentResponse(response,data){
-	trace "Entered <SendIntentResponse>"
+private void sendIntentResponse(response,data){
+	trace "Entered <sendIntentResponse>"
     debug "Async Intent Reply Recived"
     if (response.hasError()) {
-        ProcessError( "response has error: $response.errorMessage")
+        processError( "response has error: $response.errorMessage")
     } else {
 
         def results
         try {
             results = response.json
         } catch (e) {
-            ProcessError( "error parsing json from response: $e")
+            processError( "error parsing json from response: $e")
             return
         }
         
         //debug results
         if(state.Intent == "locate")
-        	ProcessLocateResponse(results)
+        	processLocateResponse(results)
         
         // Next
-        IntentComplete()
+        intentComplete()
     }
 }
-private ProcessLocateResponse(results){
-	trace "Entered <ProcessLocateResponse>"
+private void processLocateResponse(results){
+	trace "Entered <processLocateResponse>"
     debug results
     //state.LastLocateLat=results.Return.Results.Device.Latitude
     //state.LastLocateLon=results.Return.Results.Device.Longitude
     state.LastLocateAddress =results.Return.Results.Device.Address
 }
-def IntentComplete(){
-	trace "Entered <IntentComplete>"
-    info "Finalizing"
 
-    sendEvent(name:"command", value:"default",displayed:false, isStateChange: true)
-    
-    switch (state.Intent) {
-        case "arm":
-        	//sendEvent(name:"Locking", value:"Locked",displayed:true, isStateChange: false)
-            sendEvent(name: "info", value: "Last Action: Lock", displayed: false)
-        	break
-        case "disarm":
-        	//sendEvent(name:"unlock", value:"active",displayed:true, isStateChange: true)
-            sendEvent(name: "info", value: "Last Action: Unlock", displayed: false)
-            break
-        case "remote":
-        	//sendEvent(name:"start",value:"active",displayed:true, isStateChange: true)
-            sendEvent(name: "info", value: "Last Action: Start/Stop", displayed: false)
-            break
-        case "panic":
-        	 //sendEvent(name:"panic",value:"active",displayed:true, isStateChange: true)
-             sendEvent(name: "info", value: "Last Action: Panic", displayed: false)
-        break
-        case "trunk":
-        	//sendEvent(name:"trunk",value:"active",displayed:true, isStateChange: true)
-            sendEvent(name: "info", value: "Last Action: Trunk", displayed: false)
-        	break
-        case "locate":
-        	//sendEvent(name:"locate",value:"active",displayed:true, isStateChange: true)
-            sendEvent(name: "info", value: "Last Action: Locate "+state.LastLocateAddress, displayed: false)
-        	break
-        case "error":
-        	break
-        default:
-            warn "no handling for intent with status $state.Intent"
-        break
+private void webRequestInit(params, responseHandlerMethod){
+trace "Entered <webRequestInit>"
+    try 
+    {
+        debug "Starting async httpGet"
+        asynchttp_v1.get(responseHandlerMethod, params)
     }
-    state.Started=0
-    state.Intent=""
-    state.SessionId=""
-    state.VechicleId=""
-    sendEvent(name: "lastUpdate", value: formatLocalTime(now()), displayed: false)
-    resumeProcessing()
+    catch(java.lang.SecurityException e){
+    	processError("Endpoint is blacklisted or not responding,try again later")
+    }
+    catch (e) 
+    {
+        processError(e.message)
+    }
+}
+private void processError(Error){
+	trace "Entered <processError>"
+	error Error
+    state.Intent = "error"
+
+    sendEvent(name:"command", value:"error",displayed:false, isStateChange: true)
+    sendEvent(name: "info", value: "Error: $Error", displayed: true)
+
+    runIn(15,intentComplete)
 }
 
-def test(verb="locate"){
+def void test(verb="locate"){
 	//trace "Entered <test>"
 	//info verb
 	//locate
@@ -425,56 +421,87 @@ def test(verb="locate"){
     
       sendEvent(name: "info", value:"error: dd")
 }
-def resumeProcessing(){
+def void intentComplete(){
+	trace "Entered <intentComplete>"
+    info "Finalizing"
+
+    sendEvent(name:"command", value:"default",displayed:false, isStateChange: true)
+    
+    switch (state.Intent) {
+        case "arm":
+        	updateStatus("Last Action: Lock")
+        	sendEvent(name: "lock", value: "locked", displayed: false, isStateChange: true)
+        	break
+        case "disarm":
+            updateStatus("Last Action: Unlock")
+        	sendEvent(name: "lock", value: "unlocked", displayed: false, isStateChange: true)
+            break
+        case "remote":
+            updateStatus("Last Action: Start/Stop")
+            endRunning()
+            unschedule()
+            
+        	if(state.remoteType=="Start"){
+                sendEvent(name: "sessionStatus", value: "running", displayed: false, isStateChange: true)
+                sendEvent(name: "switch", value: "on", displayed: false, isStateChange: true)
+                runIn(60*StartMinutes,endRunning)
+            }
+            
+            state.remoteType = null
+            break
+        case "panic":
+             updateStatus("Last Action: Panic")
+        break
+        case "trunk":
+            updateStatus("Last Action: Trunk")
+        	break
+        case "locate":
+            updateStatus("Last Action: Locate "+state.LastLocateAddress)
+        	break
+        case "error":
+        	break
+        default:
+            warn "no handling for intent with status $state.Intent"
+        break
+    }
+    
+    state.Started=0
+    state.Intent=""
+    state.SessionId=""
+    state.VechicleId=""
+    
+    resumeProcessing()
+}
+def void resumeProcessing(){
     trace "Entered <resumeProcessing>"
     debug "resuming processing"
-        
-    sendEvent(name:"start", value:"active",displayed:false, isStateChange: true)
-	sendEvent(name:"lock", value:"active",displayed:false, isStateChange: true)
-    sendEvent(name:"unlock", value:"active",displayed:false, isStateChange: true)
-    sendEvent(name:"panic", value:"active",displayed:false, isStateChange: true)
+    updateTiles(["locate","trunk"],"NA")
+    updateTiles(["remote","arm","disarm","panic"],"active")
     
-    if (Trunk) sendEvent(name:"trunk", value:"active",displayed:false, isStateChange: true)
-    else sendEvent(name:"trunk", value:"NA",displayed:false, isStateChange: true)
-   
-    if (GPS=='true') sendEvent(name:"locate", value:"active",displayed:false, isStateChange: true)
-    else sendEvent(name:"locate", value:"NA",displayed:false, isStateChange: true)
+    if(Trunk) updateTile("trunk", "active")
+    if(GPS) updateTile("locate", "active")
 }
 
-private ProcessResponseStatus(response) {
-trace "Entered <ProcessResponseStatus>"
-	def status = response.status
-    switch (status) {
-        case 200:
-            debug "200 returned"
-            break
-        case 304:
-            debug "304 returned"
-            break
-        case 401:
-        	error "Login failed, check SmartStart credentials"
-            break
-        default:
-            warn "no handling for response with status $status"
-            break
+def void endRunning(){
+    trace "Entered <endRunning>"
+    debug "endRunning"
+	sendEvent(name: "sessionStatus", value: "stopped", displayed: false, isStateChange: true)
+    sendEvent(name: "switch", value: "off", displayed: false, isStateChange: true)
+}
+private void updateStatus(String status){
+	debug "Updating status"
+    sendEvent(name: "info", value: status, displayed: false, isStateChange: true)
+	sendEvent(name: "lastUpdate", value: formatLocalTime(now()), displayed: false, isStateChange: true)
+}
+private void updateTile(String name, String stateString ="inactive", boolean display = false, boolean stateChange = true){
+	sendEvent(name:name, value:stateString,displayed:display, isStateChange: stateChange)
+}
+private void updateTiles(names, String stateString ="inactive", boolean display = false, boolean stateChange = true){
+	names.each{name->
+        updateTile(name,stateString,display,stateChange)
     }
 }
-private WebRequestInit(params, responseHandlerMethod){
-trace "Entered <WebRequestInit>"
-    try 
-    {
-        debug "Starting async httpGet"
-        asynchttp_v1.get(responseHandlerMethod, params)
-    }
-    catch(java.lang.SecurityException e){
-    	ProcessError("Endpoint is blacklisted or not responding,try again later")
-    }
-    catch (e) 
-    {
-        ProcessError(e.message)
-    }
-}
-private formatLocalTime(time, format = "EEE, MMM d yyyy @ h:mm a z") {
+private String formatLocalTime(time, format = "EEE, MMM d yyyy @ h:mm a z") {
 	trace "Entered <formatLocalTime>"
     if (time instanceof Long) {
     	time = new Date(time)
@@ -490,44 +517,8 @@ private formatLocalTime(time, format = "EEE, MMM d yyyy @ h:mm a z") {
 	formatter.setTimeZone(location.timeZone)
 	return formatter.format(time)
 }
-private ProcessError(Error){
-	trace "Entered <ProcessError>"
-	error Error
-    state.Intent = "error"
-    //IntentComplete() 
-    
-    sendEvent(name:"command", value:"error",displayed:false, isStateChange: true)
-    sendEvent(name: "info", value: "Error: $Error", displayed: true)
-
-    runIn(15,IntentComplete)
-}
-
-def initialize() {
-	trace "Entered <initialize>"
-    trace "Initialize called"// settings: $settings"
-    try {
-        if (!state.init) {
-            state.init = true
-        }
-        state.Started = now()
-        state.Intent=""
-        state.SessionId=""
-        state.VechicleId=""
-    } catch (e) {
-        warn "initialize() threw $e"
-    }
-}
-def updated() {
-	trace "Entered <updated>"
-    //debug "Update called settings: $settings"
-    try {
-        if (!state.init) {
-            state.init = true
-        }
-        resumeProcessing()
-    } catch (e) {
-        warn "updated() threw $e"
-    }
+private String encode(String value, String encoding ="UTF-8"){
+	return URLEncoder.encode(value, encoding)
 }
 
 def void trace(message,Throwable e= null) {log(message,"trace",e)}
@@ -536,11 +527,10 @@ def void info(message,Throwable e= null) {log(message,"info",e)}
 def void warn(message,Throwable e= null) {log(message,"warn",e)}
 def void error(message,Throwable e= null) {log(message,"error",e)}
 def void log(message, level = "trace",Throwable e= null) {
-	def logLevel = getLoglevel()
-    if(loglevel == "debug" && level == "trace") return
-	if(loglevel == "info" && (level == "trace" || level == "debug")) return
-    if(loglevel == "warn" && (level == "trace" || level == "debug" || level == "info")) return
-    if(loglevel == "error" && level != "error") return
+    if(LoggingLevel == debug && level == "trace") return
+	if(LoggingLevel == info && (level == "trace" || level == "debug")) return
+    if(LoggingLevel == warn && (level == "trace" || level == "debug" || level == "info")) return
+    if(LoggingLevel == error && level != "error") return
     
     switch (level) {
         case "trace":
