@@ -47,13 +47,13 @@ metadata {
     }
 
     preferences {
-        input("Username", "string", title:"SmartStart Username", description: "Please enter your SmartStart Username", defaultValue: "user" , required: true, displayDuringSetup: true)
-        input("Password", "password", title:"SmartStart Password", description: "Please enter your SmartStart Password", defaultValue: "password" , required: true, displayDuringSetup: true)
-        input("VehicleName", "string", title:"SmartStart Vehicle Name", description: "Please enter your SmartStart Vehicle Name", defaultValue: "My Car" , required: true, displayDuringSetup: true)
-        input("GPS", "bool", title: "GPS Features", description: "Do you have a device/plan that allows GPS features?", defaultValue: true, required: true, displayDuringSetup: true)
-        input("Trunk", "bool", title:"Trunk Feature", description: "Do you have the trunk feature?", defaultValue: true, required:true,  displayDuringSetup: true)
-        input("StartMinutes","number",title:"Starter timeout minutes", description: "5 - 30", defaultValue: "15", required: true,range: "5..30", displayDuringSetup:true)
-        input(name: "LoggingLevel", type: "enum", title: "Logging Level", options: ["trace","debug","info","warn","error"], defaultValue: error, required: true, displayDuringSetup: true)
+        input("Username", "string", title:"SmartStart Username", description: "Your SmartStart Username" , required: true, displayDuringSetup: true)
+        input("Password", "password", title:"SmartStart Password", description: "Your SmartStart Password", required: true, displayDuringSetup: true)
+        input("VehicleName", "string", title:"SmartStart Vehicle Name", description: "Your SmartStart Vehicle Name", required: true, displayDuringSetup: true)
+        input("GPS", "bool", title: "GPS Features", defaultValue: false, displayDuringSetup: true)
+        input("Trunk", "bool", title:"Trunk Feature", defaultValue: false,  displayDuringSetup: true)
+        input("StartMinutes","number",title:"Starter timeout minutes", description: "5 - 30 (15 is typical)", required: true,range: "5..30", displayDuringSetup:true)
+        input(name: "LoggingLevel", type: "enum", title: "Logging Level", options: ["trace","debug","info","warn","error"],defaultValue: trace, displayDuringSetup: true)
     }
 
     simulator { }
@@ -146,9 +146,19 @@ def void locate(){
     send("locate","Locating")
 }
 
+def void installed(){
+	debug "installed"
+    updateStatus "Smart Start: Ready"
+
+    sendEvent(name: "sessionStatus", value: "stopped", displayed: false, isStateChange: true)
+    sendEvent(name: "switch", value: "off", displayed: false, isStateChange: true)
+	sendEvent(name: "lock", value: "unlocked", displayed: false, isStateChange: true)
+    
+    resumeProcessing()
+}
 def void initialize() {
     trace "Entered <initialize>"
-    trace "Initialize called"// settings: $settings"
+    debug "Initialize called"// settings: $settings"
     try {
         if (!state.init) {
             state.init = true
@@ -175,20 +185,47 @@ def void updated() {
         warn "updated() threw $e"
     }
 }
-
+private errorsInSettings(){
+	trace "Entered <errorsInSettings>"
+    if(Username == "" || Username == null) {
+        processError "Username cannot be empty"
+        return true
+    }
+    if(Password == "" || Password == null) {
+        processError "Password cannot be empty"
+        return true
+    }
+    if(VehicleName == "" || VehicleName == null) {
+        processError "VehicleName cannot be empty"
+        return true
+    }
+    //if(location == "" || location == null) {
+    //    processError "location cannot be empty"
+    //    return true
+    //}
+    //if(location.timeZone == "" || location.timeZone == null) {
+    //    processError "location.timeZone cannot be empty"
+    //    return true
+    //}	
+}
 private void send(String verb, String friendlyVerb=null){
     trace "Entered <Send>"
-    initialize()
-
-    ///
-    if(friendlyVerb == null) friendlyVerb = verb
-    updateStatus(friendlyVerb)
+	
     updateTiles(["arm","disarm","remote","panic"])
     updateTile(verb,"sending")
     updateTile("command",verb,true,true)
-
+    
     if(Trunk && verb !="trunk") updateTile("trunk")
     if(GPS && verb != "locate") updateTile("locate")
+    
+    if(errorsInSettings()) return
+    trace "passed error check"
+    
+    initialize()
+	
+    ///
+    if(friendlyVerb == null) friendlyVerb = verb
+    updateStatus(friendlyVerb)
 
     ///
     state.Intent= verb
@@ -370,7 +407,7 @@ private void processError(Error){
     sendEvent(name:"command", value:"error",displayed:false, isStateChange: true)
     sendEvent(name: "info", value: "Error: $Error", displayed: true)
 
-    runIn(15,intentComplete)
+    runIn(5,intentComplete)
 }
 
 def void test(verb="locate"){
@@ -453,7 +490,7 @@ def void endRunning(){
 private void updateStatus(String status){
     debug "Updating status"
     sendEvent(name: "info", value: status, displayed: false, isStateChange: true)
-    sendEvent(name: "lastUpdate", value: formatLocalTime(now()), displayed: false, isStateChange: true)
+    sendEvent(name: "lastUpdate", value: formatLocalTime(), displayed: false, isStateChange: true)
 }
 private void updateTile(String name, String stateString ="inactive", boolean display = false, boolean stateChange = true){
     sendEvent(name:name, value:stateString,displayed:display, isStateChange: stateChange)
@@ -463,8 +500,9 @@ private void updateTiles(names, String stateString ="inactive", boolean display 
         updateTile(name,stateString,display,stateChange)
     }
 }
-private String formatLocalTime(time, format = "EEE, MMM d yyyy @ h:mm a z") {
+private String formatLocalTime(time=now(), format = "EEE, MMM d yyyy @ h:mm a z") {
     trace "Entered <formatLocalTime>"
+    
     if (time instanceof Long) {
         time = new Date(time)
     }
@@ -475,6 +513,12 @@ private String formatLocalTime(time, format = "EEE, MMM d yyyy @ h:mm a z") {
     if (!(time instanceof Date)) {
         return null
     }
+    
+    if(location == null || location.timeZone == null) {
+    	warn "Location for hub not set"
+        return time
+    }
+    
     def formatter = new java.text.SimpleDateFormat(format)
     formatter.setTimeZone(location.timeZone)
     return formatter.format(time)
