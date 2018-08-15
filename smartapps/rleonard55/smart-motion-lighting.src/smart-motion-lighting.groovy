@@ -39,6 +39,10 @@ def page1() {
             input "ifOffOrLower", "bool", title: "Only if switch is off or lower", defaultValue:true
             input "motions", "capability.motionSensor", title: "When there is motion here...", multiple:true
             
+            input "lightSensor","capability.illuminanceMeasurement",required:false,title: "When this is light sensor...",submitOnChange: true
+            if(settings?.lightSensor != null){
+            	input "lightLevel", "number", title: "Below this LUX level", range: "0..*", defaultValue: 70
+            }
             input "turnOffAfterMotion", "bool", title: "Turn off / restore level when motion ends", defaultValue: false,submitOnChange: true
             if(turnOffAfterMotion) {
             	input "turnOffMin", "number", title: "After x minute(s)", range: "0..*", defaultValue: 15
@@ -148,7 +152,7 @@ def onMotion(evt) {
     
     def timeOk = timeToRun()
     logDebug "TimeOk =${timeOk}"
-	if(!timeOk) return
+	if(timeOk== false && luxLevelToRun() == false) return
     
     def dayOk = dayToRun()
     logDebug "DayOk =${dayOk}"
@@ -241,6 +245,25 @@ def onLevelChange(evt){
     unsubscribe(onTurnOff)
     unsubscribe(onLevelChange)
     unschedule()
+}
+
+private luxLevelToRun(){
+    logTrace "Entering 'luxLevelToRun'"
+    logDebug "Lights {"+ settings?.lightSensor+ "} are at {"+settings?.lightSensor.currentValue("illuminance") +"}"
+
+    def run = false
+
+    if(settings?.lightSensor !=null) {
+        if(settings?.lightSensor.currentValue("illuminance") <= settings.lightLevel) {
+			logDebug "Illuminance is low enough to run lights"
+            run = true
+        }
+    }
+    else           
+        run = false
+
+    logTrace "Exiting 'luxLevelToRun'"
+    return run
 }
 
 private timeToRun() {
