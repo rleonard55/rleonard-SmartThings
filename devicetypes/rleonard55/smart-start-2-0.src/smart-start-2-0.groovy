@@ -4,27 +4,28 @@
 include 'asynchttp_v1'
 
 def clientVersion() {
-    return "00.02.02"
+    return "00.02.03"
 }
 
 /**
-*  Smart Start 2.0
-*
-*  Copyright 2018 Rob Leonard
-*
-*  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License. You may obtain a copy of the License at:
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
-*  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
-*  for the specific language governing permissions and limitations under the License.
-*
-* Change log:
-* 2018-05-03 - (v00.02.01) Updated Instrumentation
-* 2018-06-16 - (v00.02.02) Lots of code cleanup, added proper encoding for user/pass & properties for Alexa
-*/
+        *  Smart Start 2.3
+        *
+        *  Copyright 2018 Rob Leonard
+        *
+        *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+        *  in compliance with the License. You may obtain a copy of the License at:
+        *
+        *      http://www.apache.org/licenses/LICENSE-2.0
+        *
+        *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+        *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+        *  for the specific language governing permissions and limitations under the License.
+        *
+        * Change log:
+        * 2018-05-03 - (v00.02.01) Updated Instrumentation
+        * 2018-06-16 - (v00.02.02) Lots of code cleanup, added proper encoding for user/pass & properties for Alexa
+        * 2008-11-13 - (v00.02.03) Added automatic retry on error and some code cleanup
+        */
 
 metadata {
     definition(
@@ -52,8 +53,12 @@ metadata {
         input("VehicleName", "string", title:"SmartStart Vehicle Name", description: "Your SmartStart Vehicle Name", required: true, displayDuringSetup: true)
         input("GPS", "bool", title: "GPS Features", defaultValue: false, displayDuringSetup: true)
         input("Trunk", "bool", title:"Trunk Feature", defaultValue: false,  displayDuringSetup: true)
+        
         input("StartMinutes","number",title:"Starter timeout minutes", description: "5 - 30 (15 is typical)", required: true,range: "5..30", displayDuringSetup:true)
+        input("MaxRetryAttempts","number",title:"Maximum Retry attempts", description: "0 - 5 (1 is typical)", required: true, range: "0..5", defaultValue: 1, displayDuringSetup:true)
         input(name: "LoggingLevel", type: "enum", title: "Logging Level", options: ["trace","debug","info","warn","error"],defaultValue: trace, displayDuringSetup: true)
+        input "apiKey", "text", title: "IFTTT API Key", required: false
+        input "makerErrorEvent","text",title: "IFTTT Error Event Name",defaultValue: "smartStartError", required: false
     }
 
     simulator { }
@@ -68,13 +73,14 @@ metadata {
             }
         }
         standardTile("command", "command", width:3, height:2){
-            state "default", label: 'Lock', icon: "st.Transportation.transportation8", backgroundColor: "#ffffff", action: "lock"//, nextState:"lock"
+            state "default", label: 'Lock', icon: "st.Transportation.transportation8", backgroundColor: "#ffffff", action: "lock", nextState:"arm"
             state "arm", label: 'Locking', icon: "st.bmw.doors-locked", backgroundColor: "#00a0dc"
             state "disarm", label: 'Unocking', icon: "st.bmw.doors-unlocked", backgroundColor: "#00a0dc"
             state "start", label: 'Starting', icon: "st.samsung.da.RC_ic_power", backgroundColor: "#00a0dc"
             state "trunk", label: 'Trunk', icon: "st.bmw.trunk_open", backgroundColor: "#00a0dc"
             state "panic", label: 'Panic', icon: "st.Office.office6", backgroundColor: "#00a0dc"
             state "locate", label: 'Locating', icon: "st.Office.office13", backgroundColor: "#00a0dc"
+            state "retry", label: 'Retrying', icon: "st.secondary.refresh", backgroundColor: "#00a0dc"
             state "error", label: 'Error', icon: "st.Seasonal Fall.seasonal-fall-010", backgroundColor: "#ff0065"
         }
         tileToggle("arm","lock","st.bmw.doors-locked","lock")
@@ -109,11 +115,17 @@ def getSendCommandUrl() {return getServerUrl()+"/device/sendcommand/${state.Vech
 
 def void lock() {
     info "Received Lock Request"
-    send("arm","Locking")
+    
+    state.Intent= "arm"
+    state.FriendlyIntent= "Locking"
+    send()
 }
 def void unlock() {
     info "Received Unlock Request"
-    send("disarm","Unlocking")
+    
+    state.Intent= "disarm"
+    state.FriendlyIntent= "Unlocking"
+    send()
 }
 
 def void on() {
@@ -124,52 +136,45 @@ def void off() {
 }
 def void start() {
     info "Received Start Request"
-    state.remoteType="Start"
-    send("remote","Starting")
+    state.Intent= "remote"
+    state.FriendlyIntent= "Starting"
+    send()
 }
 def void stop() {
     info "Received Stop Request"
-    state.remoteType="Stop"
-    send("remote","Stopping")
+    state.Intent= "remote"
+    state.FriendlyIntent= "Stopping"
+    send()
 }
 
 def void trunk(){
     info "Received Trunk Open Request"
-    send("trunk","Sending Trunk")
+    state.Intent= "trunk"
+    state.FriendlyIntent= "Sending Trunk"
+    send()
 }
 def void panic(){
     info "Received Panic Request"
-    send("panic","Sending Panic")
+    state.Intent= "panic"
+    state.FriendlyIntent= "Sending Panic"
+    send()
 }
 def void locate(){
     info "Received Locate Request"
-    send("locate","Locating")
+    state.Intent= "locate"
+    state.FriendlyIntent= "Locating"
+    send()
 }
 
 def void installed(){
-	debug "installed"
+    debug "installed"
     updateStatus "Smart Start: Ready"
 
     sendEvent(name: "sessionStatus", value: "stopped", displayed: false, isStateChange: true)
     sendEvent(name: "switch", value: "off", displayed: false, isStateChange: true)
-	sendEvent(name: "lock", value: "unlocked", displayed: false, isStateChange: true)
-    
+    sendEvent(name: "lock", value: "unlocked", displayed: false, isStateChange: true)
+
     resumeProcessing()
-}
-def void initialize() {
-    trace "Entered <initialize>"
-    debug "Initialize called"// settings: $settings"
-    try {
-        if (!state.init) {
-            state.init = true
-        }
-        state.Started = now()
-        state.Intent=""
-        state.SessionId=""
-        state.VechicleId=""
-    } catch (e) {
-        warn "initialize() threw $e"
-    }
 }
 def void updated() {
     trace "Entered <updated>"
@@ -177,26 +182,36 @@ def void updated() {
     unschedule()
     //debug "Update called settings: $settings"
     try {
-        if (!state.init) {
-            state.init = true
-        }
         resumeProcessing()
     } catch (e) {
         warn "updated() threw $e"
     }
 }
+def void initialize() {
+    trace "Entered <initialize>"
+    debug "Initialize called"// settings: $settings"
+    try {
+        state.Intent=""
+        state.FriendlyIntent=""
+        state.SessionId=""
+        state.VechicleId=""
+    } catch (e) {
+        warn "initialize() threw $e"
+    }
+}
+
 private errorsInSettings(){
-	trace "Entered <errorsInSettings>"
+    trace "Entered <errorsInSettings>"
     if(Username == "" || Username == null) {
-        processError "Username cannot be empty"
+        state.currentError = "Username cannot be empty"
         return true
     }
     if(Password == "" || Password == null) {
-        processError "Password cannot be empty"
+        state.currentError =  "Password cannot be empty"
         return true
     }
     if(VehicleName == "" || VehicleName == null) {
-        processError "VehicleName cannot be empty"
+        state.currentError =  "VehicleName cannot be empty"
         return true
     }
     //if(location == "" || location == null) {
@@ -207,28 +222,41 @@ private errorsInSettings(){
     //    processError "location.timeZone cannot be empty"
     //    return true
     //}	
+    return false
 }
-private void send(String verb, String friendlyVerb=null){
+
+private void retry(){
+    trace "Entered <retry>"
+    debug "Scheduleing retry for 3sec from now"
+   
+   	state.Retry = state.Retry+1
+    info ("Retrying "+ state.Intent+" Request")
+	updateTile("command","retry",true,true)
+    updateStatus("Retrying($state.Retry): $state.Intent")
+
+    runIn(3,send)
+}
+def void send(){
     trace "Entered <Send>"
-	
+    
     updateTiles(["arm","disarm","remote","panic"])
     updateTile(verb,"sending")
-    updateTile("command",verb,true,true)
     
-    if(Trunk && verb !="trunk") updateTile("trunk")
-    if(GPS && verb != "locate") updateTile("locate")
+    if(state.Retry==0) {
+    	updateTile("command",state.Intent,true,true)
+        updateStatus("Sending: $state.Intent request")
+	}
     
-    if(errorsInSettings()) return
-    trace "passed error check"
     
-    initialize()
-	
-    ///
-    if(friendlyVerb == null) friendlyVerb = verb
-    updateStatus(friendlyVerb)
+    if(Trunk && state.Intent !="trunk") updateTile("trunk")
+    if(GPS && state.Intent != "locate") updateTile("locate")
 
-    ///
-    state.Intent= verb
+    if(errorsInSettings()) 
+    {
+    	processError(state.currentError, false)
+    	return
+    }
+    trace "passed error check"
 
     trace "Logging in"    
     login()        
@@ -253,17 +281,23 @@ private void loginResponse(response, data){
     debug "Async Login Reply Received"
 
     if (response.hasError()) {
-        if(response.status==401)
-        processError("Authentication Failure, check SmartStart credentials")
+        if(response.status == 401)
+        {
+        	processError("Authentication Failure, check SmartStart credentials",false)
+            return
+        }
         else	
-            processError(response.errorMessage)
+        {
+            processError(response.errorMessage, true)
+            return
+        }
     } else {
 
         def results
         try {
             results = response.json
         } catch (e) {
-            processError( "error parsing json from response: $e")
+            processError( "error parsing json from response: $e", true)
             return
         }
 
@@ -271,7 +305,7 @@ private void loginResponse(response, data){
             state.SessionId=results.Return.Results.SessionID
             debug "Received Session ID: "+state.SessionId
         } else {
-            processError( "did not get json results from response body: $response.data")
+            processError( "did not get json results from response body: $response.data",true)
             return
         }
 
@@ -299,13 +333,14 @@ private void getVehicleIDResponse(response, data){
     trace "Entered <getVehicleIDResponse>"
     debug "Async VehicleID Reply Recived"
     if (response.hasError()) {
-        processError( "response has error: $response.errorMessage")
+        processError( "response has error: $response.errorMessage",true)
+        return
     } else {
         def results
         try {
             results = response.json
         } catch (e) {
-            processError( "error parsing json from response: $e")
+            processError( "error parsing json from response: $e",true)
             return
         }
 
@@ -314,24 +349,18 @@ private void getVehicleIDResponse(response, data){
             def Vehicles=results.Return.Results.Devices
             def id= Vehicles.findIndexOf{ it-> it.Name.equals(VehicleName)}
 
-            if(id == -1) {
-                processError("Failed to find vehicle {"+VehicleName+"}. Check SmartStart vehicle name.")
+            if(id == -1) 
+            { 
+                processError("Failed to find vehicle {"+VehicleName+"}. Check SmartStart vehicle name.",false)
                 return
             }
 
             assert id != -1
             state.VechicleId = Vehicles[id].DeviceId
 
-            //def actions
-            //Vehicles[id].AvailActions.each{ it ->
-            //	actions = actions+ it?.Name+", "
-            //}
-            //debug actions
-
-            debug "Found Vehicle Id: " + state.VehicleId
-            // return VehicleId
+            debug "Found Vehicle Id: " + state.VechicleId
         } else {
-            processError( "did not get json results from response body: $response.data")
+            processError( "did not get json results from response body: $response.data", true)
             return
         }
 
@@ -357,14 +386,15 @@ private void sendIntentResponse(response,data){
     trace "Entered <sendIntentResponse>"
     debug "Async Intent Reply Recived"
     if (response.hasError()) {
-        processError( "response has error: $response.errorMessage")
+        processError( "response has error: $response.errorMessage",true)
+        return
     } else {
 
         def results
         try {
             results = response.json
         } catch (e) {
-            processError( "error parsing json from response: $e")
+            processError( "error parsing json from response: $e",true)
             return
         }
 
@@ -376,6 +406,7 @@ private void sendIntentResponse(response,data){
         intentComplete()
     }
 }
+
 private void processLocateResponse(results){
     trace "Entered <processLocateResponse>"
     debug results
@@ -383,31 +414,73 @@ private void processLocateResponse(results){
     //state.LastLocateLon=results.Return.Results.Device.Longitude
     state.LastLocateAddress =results.Return.Results.Device.Address
 }
-
 private void webRequestInit(params, responseHandlerMethod){
     trace "Entered <webRequestInit>"
+    debug "ResponsMethod >> "+responseHandlerMethod
     try 
     {
         debug "Starting async httpGet"
         asynchttp_v1.get(responseHandlerMethod, params)
     }
     catch(java.lang.SecurityException e){
-        processError("Endpoint is blacklisted or not responding,try again later")
+        processError("Endpoint is blacklisted or not responding,try again later",true)
+        return
     }
     catch (e) 
     {
-        processError(e.message)
+        processError(e.message,true)
+        return
     }
 }
-private void processError(Error){
+
+private void processError(Error, Retry=false){
     trace "Entered <processError>"
-    error Error
-    state.Intent = "error"
+    state.currentError = null
 
-    sendEvent(name:"command", value:"error",displayed:false, isStateChange: true)
-    sendEvent(name: "info", value: "Error: $Error", displayed: true)
+    if(Retry && state.Retry < MaxRetryAttempts) 
+    {
+        warn Error
+        retry()
+    }
+    else
+    {
+    	if (state.Retry >= MaxRetryAttempts)
+        	warn "Reached maximum retry attempts [${state.Retry}]."
 
-    runIn(5,intentComplete)
+        SendIfttt(makerErrorEvent,Error)
+            
+        error Error 
+        state.Intent ="error"
+        sendEvent(name:"command", value:"error",displayed:false, isStateChange: true)
+        sendEvent(name: "info", value: "Error: $Error", displayed: true)
+        sendEvent(name: "Error", value: "$Error", displayed: false)
+        runIn(5,intentComplete)
+    }
+}
+def SendIfttt(command, value) {
+    trace "Entered <SendIfttt>"
+    
+     if(apiKey == "" || apiKey == null || makerErrorEvent == ""|| makerErrorEvent == null) 
+     {
+     	info "Skipping IFTTT, not configured"
+        return
+     }
+    	
+	def apiURL = "https://maker.ifttt.com/trigger/${command}/with/key/${apiKey}"
+    def parms =[
+    	uri: "https://maker.ifttt.com/trigger/${command}/with/key/${apiKey}",
+        body: [value1: value]
+    ]
+   // log.debug apiURL
+    try {
+         httpPostJson(parms) { resp ->
+             debug "response data: ${resp.data}"
+             debug "response contentType: ${resp.contentType}"
+         }
+        // log.debug("done")
+	} catch (e) {
+    	debug "something went wrong: $e"
+	}
 }
 
 def void test(verb="locate"){
@@ -437,16 +510,15 @@ def void intentComplete(){
         break
         case "remote":
         updateStatus("Last Action: Start/Stop")
-        endRunning()
+        //endRunning()
         unschedule()
 
-        if(state.remoteType=="Start"){
+        if(state.FriendlyIntent=="Starting"){
             sendEvent(name: "sessionStatus", value: "running", displayed: false, isStateChange: true)
             sendEvent(name: "switch", value: "on", displayed: false, isStateChange: true)
             runIn(60*StartMinutes,endRunning)
         }
-
-        state.remoteType = null
+        
         break
         case "panic":
         updateStatus("Last Action: Panic")
@@ -463,15 +535,17 @@ def void intentComplete(){
             warn "no handling for intent with status $state.Intent"
         break
     }
-
-    state.Started=0
+    
+	state.Retry = 0
     state.Intent=""
+    state.FriendlyIntent=""
     state.SessionId=""
     state.VechicleId=""
 
     resumeProcessing()
 }
 def void resumeProcessing(){
+
     trace "Entered <resumeProcessing>"
     debug "resuming processing"
     updateTiles(["locate","trunk"],"NA")
@@ -480,13 +554,13 @@ def void resumeProcessing(){
     if(Trunk) updateTile("trunk", "active")
     if(GPS) updateTile("locate", "active")
 }
-
 def void endRunning(){
     trace "Entered <endRunning>"
     debug "endRunning"
     sendEvent(name: "sessionStatus", value: "stopped", displayed: false, isStateChange: true)
     sendEvent(name: "switch", value: "off", displayed: false, isStateChange: true)
 }
+
 private void updateStatus(String status){
     debug "Updating status"
     sendEvent(name: "info", value: status, displayed: false, isStateChange: true)
@@ -502,7 +576,7 @@ private void updateTiles(names, String stateString ="inactive", boolean display 
 }
 private String formatLocalTime(time=now(), format = "EEE, MMM d yyyy @ h:mm a z") {
     trace "Entered <formatLocalTime>"
-    
+
     if (time instanceof Long) {
         time = new Date(time)
     }
@@ -513,12 +587,12 @@ private String formatLocalTime(time=now(), format = "EEE, MMM d yyyy @ h:mm a z"
     if (!(time instanceof Date)) {
         return null
     }
-    
+
     if(location == null || location.timeZone == null) {
-    	warn "Location for hub not set"
+        warn "Location for hub not set"
         return time
     }
-    
+
     def formatter = new java.text.SimpleDateFormat(format)
     formatter.setTimeZone(location.timeZone)
     return formatter.format(time)
