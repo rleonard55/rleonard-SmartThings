@@ -4,11 +4,11 @@
 include 'asynchttp_v1'
 
 def clientVersion() {
-    return "00.02.03"
+    return "00.02.4"
 }
 
 /**
-        *  Smart Start 2.3
+        *  Smart Start 2.4
         *
         *  Copyright 2018 Rob Leonard
         *
@@ -24,7 +24,8 @@ def clientVersion() {
         * Change log:
         * 2018-05-03 - (v00.02.01) Updated Instrumentation
         * 2018-06-16 - (v00.02.02) Lots of code cleanup, added proper encoding for user/pass & properties for Alexa
-        * 2008-11-13 - (v00.02.03) Added automatic retry on error and some code cleanup
+        * 2018-11-13 - (v00.02.03) Added automatic retry on error and some code cleanup
+        * 2018-11-19 - (v00.02.04) Smart retry (only retry needed requests), store vehicle id between attempts, ignore additional calls while processing
         */
 
 metadata {
@@ -32,7 +33,7 @@ metadata {
         name: "Smart Start 2.0",
         namespace: "rleonard55",
         author: "Rob Leonard",	
-        description: "Start/stop/arm/disarm/panic vehicle",
+        description: "Start/stop/arm/disarm/panic/locate vehicle",
         singleInstance: false)
     {
         capability "timedSession"
@@ -57,7 +58,7 @@ metadata {
         input("StartMinutes","number",title:"Starter timeout minutes", description: "5 - 30 (15 is typical)", required: true,range: "5..30", displayDuringSetup:true)
         input("MaxRetryAttempts","number",title:"Maximum Retry attempts", description: "0 - 5 (1 is typical)", required: true, range: "0..5", defaultValue: 1, displayDuringSetup:true)
         input(name: "LoggingLevel", type: "enum", title: "Logging Level", options: ["trace","debug","info","warn","error"],defaultValue: trace, displayDuringSetup: true)
-        input "apiKey", "text", title: "IFTTT API Key", required: false
+        input "apiKey", "password", title: "IFTTT API Key", required: false
         input "makerErrorEvent","text",title: "IFTTT Error Event Name",defaultValue: "smartStartError", required: false
     }
 
@@ -101,9 +102,9 @@ metadata {
 }
 private tileToggle(varName, label, icon, method,width=2,height=3) {
     return  standardTile("${varName}", "device.${varName}", inactiveLabel:false, decoration:"flat", width:width, height:height) {
-        state "active", label:"${label}", icon:"${icon}", action:"${method}",nextState:"sending"//,backgroundColor: "#ffffff"
+        state "active", label:"${label}".capitalize(), icon:"${icon}", action:"${method}",nextState:"sending"//,backgroundColor: "#ffffff"
         state "sending", label:"Sending\n${label}", icon:"${icon}"//, backgroundColor: "#00a0dc"
-        state "inactive", label:"${label}", icon:"https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/Loading.gif"//, backgroundColor: "#d3d3d3" 
+        state "inactive", label:"${label}".capitalize(), icon:"https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/Loading.gif"//, backgroundColor: "#d3d3d3" 
         state "NA", label:""
         //state "NA", label:"${label}",backgroundColor: "#ffffff", icon: "https://github.com/rleonard55/rleonard-SmartThings/raw/master/devicetypes/rleonard55/smart-start-2-0.src/NA.png"
     }
@@ -111,11 +112,17 @@ private tileToggle(varName, label, icon, method,width=2,height=3) {
 def getServerUrl() { return "https://colt.calamp-ts.com" }
 def getLoginUrl(user, pass) { return getServerUrl()+"/auth/login/${encode(user)}/${encode(pass)}"}
 def getVehicleIdUrl() { return getServerUrl()+"/device/advancedsearch?sessid=${state.SessionId}"}
-def getSendCommandUrl() {return getServerUrl()+"/device/sendcommand/${state.VechicleId}/${state.Intent}?sessid=${state.SessionId}"}
+def getSendCommandUrl() {return getServerUrl()+"/device/sendcommand/${state.VehicleId}/${state.Intent}?sessid=${state.SessionId}"}
 
 def void lock() {
     info "Received Lock Request"
     
+    if(state.Running ==true) 
+    { 
+    	warn "Already processing ${state.Intent} request, skipping new lock request"
+        return
+    }
+    state.Running =true
     state.Intent= "arm"
     state.FriendlyIntent= "Locking"
     send()
@@ -123,6 +130,12 @@ def void lock() {
 def void unlock() {
     info "Received Unlock Request"
     
+    if(state.Running ==true) 
+    { 
+    	warn "Already processing ${state.Intent} request, skipping new unlock request"
+        return
+    }
+    state.Running =true
     state.Intent= "disarm"
     state.FriendlyIntent= "Unlocking"
     send()
@@ -136,12 +149,24 @@ def void off() {
 }
 def void start() {
     info "Received Start Request"
+    if(state.Running ==true) 
+    { 
+    	warn "Already processing ${state.Intent} request, skipping new start request"
+        return
+    }
+    state.Running =true
     state.Intent= "remote"
     state.FriendlyIntent= "Starting"
     send()
 }
 def void stop() {
     info "Received Stop Request"
+    if(state.Running ==true) 
+    { 
+    	warn "Already processing ${state.Intent} request, skipping new stop request"
+        return
+    }
+    state.Running =true
     state.Intent= "remote"
     state.FriendlyIntent= "Stopping"
     send()
@@ -149,18 +174,36 @@ def void stop() {
 
 def void trunk(){
     info "Received Trunk Open Request"
+    if(state.Running ==true) 
+    { 
+    	warn "Already processing ${state.Intent} request, skipping new trunk request"
+        return
+    }
+    state.Running =true
     state.Intent= "trunk"
     state.FriendlyIntent= "Sending Trunk"
     send()
 }
 def void panic(){
     info "Received Panic Request"
+    if(state.Running ==true) 
+    { 
+    	warn "Already processing ${state.Intent} request, skipping new panic request"
+        return
+    }
+    state.Running =true
     state.Intent= "panic"
     state.FriendlyIntent= "Sending Panic"
     send()
 }
 def void locate(){
     info "Received Locate Request"
+    if(state.Running ==true) 
+    { 
+    	warn "Already processing ${state.Intent} request, skipping new locate request"
+        return
+    }
+    state.Running =true
     state.Intent= "locate"
     state.FriendlyIntent= "Locating"
     send()
@@ -180,6 +223,7 @@ def void updated() {
     trace "Entered <updated>"
     endRunning()
     unschedule()
+    initialize()
     //debug "Update called settings: $settings"
     try {
         resumeProcessing()
@@ -194,7 +238,8 @@ def void initialize() {
         state.Intent=""
         state.FriendlyIntent=""
         state.SessionId=""
-        state.VechicleId=""
+        state.VehicleId=""
+        state.Running = false
     } catch (e) {
         warn "initialize() threw $e"
     }
@@ -234,19 +279,19 @@ private void retry(){
 	updateTile("command","retry",true,true)
     updateStatus("Retrying($state.Retry): $state.Intent")
 
-    runIn(3,send)
+    runIn(3,state.Method)
+    //runIn(3,send)
 }
 def void send(){
     trace "Entered <Send>"
-    
+    state.Method = "send"    
     updateTiles(["arm","disarm","remote","panic"])
     updateTile(verb,"sending")
     
     if(state.Retry==0) {
-    	updateTile("command",state.Intent,true,true)
+    	updateTile("command",state.Intent.capitalize(),true,true)
         updateStatus("Sending: $state.Intent request")
 	}
-    
     
     if(Trunk && state.Intent !="trunk") updateTile("trunk")
     if(GPS && state.Intent != "locate") updateTile("locate")
@@ -256,7 +301,7 @@ def void send(){
     	processError(state.currentError, false)
     	return
     }
-    trace "passed error check"
+    trace "passed settings error check"
 
     trace "Logging in"    
     login()        
@@ -265,6 +310,7 @@ def void send(){
 private void login(){
     trace "Entered <login>"
     debug "Building login URL"
+    state.Method = "login" 
     def url = getLoginUrl(Username,Password)
     // debug "the url is: "+ url
 
@@ -283,12 +329,12 @@ private void loginResponse(response, data){
     if (response.hasError()) {
         if(response.status == 401)
         {
-        	processError("Authentication Failure, check SmartStart credentials",false)
+        	processError(response.status+" Authentication Failure, check SmartStart credentials",false)
             return
         }
         else	
         {
-            processError(response.errorMessage, true)
+            processError(response.status+" "+response.errorMessage, true)
             return
         }
     } else {
@@ -316,7 +362,14 @@ private void loginResponse(response, data){
 
 private void getVehicleID() {
     trace "Entered <getVehicleID>"
+    if (state.VehicleId != "" && state.VehicleId != null ) 
+    {
+    	debug "Vehicle ID known skipping check"
+        sendIntent()
+        return
+    }
     debug "Building Get Vehicle URL"
+    state.Method = "getVehicleID" 
     def Vehicles
     def VehicleId = ""
     def url = getVehicleIdUrl()
@@ -356,9 +409,9 @@ private void getVehicleIDResponse(response, data){
             }
 
             assert id != -1
-            state.VechicleId = Vehicles[id].DeviceId
+            state.VehicleId = Vehicles[id].DeviceId
 
-            debug "Found Vehicle Id: " + state.VechicleId
+            debug "Found Vehicle Id: " + state.VehicleId
         } else {
             processError( "did not get json results from response body: $response.data", true)
             return
@@ -371,6 +424,7 @@ private void getVehicleIDResponse(response, data){
 
 private void sendIntent(){
     trace "Entered <sendIntent>"
+    state.Method = "sendIntent" 
     def url = getSendCommandUrl()
     debug "Send Action Url is ${url}"
 
@@ -386,7 +440,18 @@ private void sendIntentResponse(response,data){
     trace "Entered <sendIntentResponse>"
     debug "Async Intent Reply Recived"
     if (response.hasError()) {
-        processError( "response has error: $response.errorMessage",true)
+        def status = response.status
+        switch (status) {
+            case 403:
+                warn "Received forbidden status, clearing vehicle id, try again later."
+            	state.VehicleId=""
+                processError( response.status+" "+"response has error: $response.errorMessage",false)
+            break
+            default:
+                info "no special handling for response with status $status"
+                processError( response.status+" "+"response has error: $response.errorMessage",true)
+            break
+        }
         return
     } else {
 
@@ -416,14 +481,14 @@ private void processLocateResponse(results){
 }
 private void webRequestInit(params, responseHandlerMethod){
     trace "Entered <webRequestInit>"
-    debug "ResponsMethod >> "+responseHandlerMethod
+    debug "ResponseMethod >> "+responseHandlerMethod
     try 
     {
         debug "Starting async httpGet"
         asynchttp_v1.get(responseHandlerMethod, params)
     }
     catch(java.lang.SecurityException e){
-        processError("Endpoint is blacklisted or not responding,try again later",true)
+        processError("Endpoint is blacklisted or not responding,try again later",false)
         return
     }
     catch (e) 
@@ -540,7 +605,7 @@ def void intentComplete(){
     state.Intent=""
     state.FriendlyIntent=""
     state.SessionId=""
-    state.VechicleId=""
+    //state.VehicleId=""
 
     resumeProcessing()
 }
@@ -553,6 +618,7 @@ def void resumeProcessing(){
 
     if(Trunk) updateTile("trunk", "active")
     if(GPS) updateTile("locate", "active")
+    state.Running = false
 }
 def void endRunning(){
     trace "Entered <endRunning>"
